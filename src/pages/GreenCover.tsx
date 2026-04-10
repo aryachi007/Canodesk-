@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState, useTransition } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Globe, Map } from 'lucide-react';
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { fetchGreenTrends } from '@/lib/api';
 import CanodeskMap from '@/components/CanodeskMap';
 
+const CesiumMap = lazy(() => import('@/components/CesiumMap'));
+
 type NdviLayer = 'ndvi2020' | 'ndvi2024';
+type MapMode   = '2d' | '3d';
 
 export default function GreenCover() {
   const [year,        setYear]        = useState<2020 | 2024>(2024);
@@ -13,6 +16,15 @@ export default function GreenCover() {
   const [ndvi2024,    setNdvi2024]    = useState(0.62);
   const [greenLoss,   setGreenLoss]   = useState(16.2);
   const [loading,     setLoading]     = useState(true);
+  const [mapMode,     setMapMode]     = useState<MapMode>('2d');
+  const [fading,      setFading]      = useState(false);
+  const [,            startTransition] = useTransition();
+
+  const toggleMode = (next: MapMode) => {
+    if (next === mapMode) return;
+    setFading(true);
+    setTimeout(() => { startTransition(() => setMapMode(next)); setFading(false); }, 300);
+  };
 
   useEffect(() => {
     fetchGreenTrends().then(t => {
@@ -49,6 +61,36 @@ export default function GreenCover() {
         </div>
 
         <hr className="border-border" />
+
+        {/* ── 2D / 3D Mode Toggle ──────────────────────────────────────── */}
+        <div>
+          <p className="font-mono text-[10px] text-canodesk-text-muted tracking-wider mb-2">MAP MODE</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => toggleMode('2d')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-body font-semibold text-sm border transition-all duration-300
+                ${mapMode === '2d'
+                  ? 'bg-canodesk-green text-white border-canodesk-green shadow-lg shadow-green-500/20'
+                  : 'border-border text-canodesk-text-muted hover:border-canodesk-green hover:text-canodesk-green'}`}
+            >
+              <Map size={14} /> 2D View
+            </button>
+            <button
+              onClick={() => toggleMode('3d')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-body font-semibold text-sm border transition-all duration-300
+                ${mapMode === '3d'
+                  ? 'bg-canodesk-navy text-white border-canodesk-navy shadow-lg'
+                  : 'border-border text-canodesk-text-muted hover:border-canodesk-navy hover:text-canodesk-navy'}`}
+            >
+              <Globe size={14} /> 3D View
+            </button>
+          </div>
+          {mapMode === '3d' && (
+            <p className="font-body text-[10px] text-canodesk-text-muted mt-2 text-center animate-fadeUp">
+              ✨ Cinematic 3D • Click zones for details
+            </p>
+          )}
+        </div>
 
         {/* Hero stat */}
         <div className="text-center py-4 animate-fadeUp">
@@ -139,14 +181,55 @@ export default function GreenCover() {
         </p>
       </div>
 
-      {/* ── Map ─────────────────────────────────────────────────────────── */}
+      {/* ── Map Container ────────────────────────────────────────────────── */}
       <div className="flex-1 relative hidden lg:flex flex-col">
-        <div className="flex-1 relative">
-          <CanodeskMap activeLayer={activeLayer} />
+        <div
+          className="flex-1 relative"
+          style={{ opacity: fading ? 0 : 1, transition: 'opacity 300ms ease' }}
+        >
+          {/* 2D Leaflet */}
+          <div
+            className="absolute inset-0"
+            style={{
+              opacity:       mapMode === '2d' ? 1 : 0,
+              pointerEvents: mapMode === '2d' ? 'all' : 'none',
+              transition:    'opacity 300ms ease',
+              zIndex:        mapMode === '2d' ? 1 : 0,
+            }}
+          >
+            <CanodeskMap activeLayer={activeLayer} />
+          </div>
+
+          {/* 3D Cesium */}
+          <div
+            className="absolute inset-0"
+            style={{
+              opacity:       mapMode === '3d' ? 1 : 0,
+              pointerEvents: mapMode === '3d' ? 'all' : 'none',
+              transition:    'opacity 300ms ease',
+              zIndex:        mapMode === '3d' ? 1 : 0,
+            }}
+          >
+            <Suspense
+              fallback={
+                <div className="w-full h-full flex items-center justify-center bg-[#0a1628]">
+                  <div className="text-center">
+                    <div className="w-10 h-10 rounded-full border-4 border-canodesk-green border-t-transparent animate-spin mx-auto mb-3" />
+                    <p className="font-mono text-xs text-canodesk-green tracking-wider">LOADING 3D ENGINE...</p>
+                  </div>
+                </div>
+              }
+            >
+              <CesiumMap activeLayer={activeLayer} />
+            </Suspense>
+          </div>
         </div>
+
         {/* Footer strip */}
-        <div className="bg-card/90 backdrop-blur-sm h-8 flex items-center px-4 text-[11px] font-body text-canodesk-text-muted border-t border-border z-10 shrink-0">
-          🌿 NDVI overlay: ESA Sentinel-2 &nbsp;|&nbsp; Showing: {year === 2020 ? '2020 baseline' : '2024 current'}
+        <div className="bg-card/90 backdrop-blur-sm h-8 flex items-center px-4 text-[11px] font-body text-canodesk-text-muted border-t border-border z-30 shrink-0">
+          {mapMode === '2d'
+            ? `🌿 NDVI overlay: ESA Sentinel-2 | Showing: ${year === 2020 ? '2020 baseline' : '2024 current'}`
+            : '🌍 3D Mode: Cesium World Terrain | NDVI overlay | Click zones for popup'}
         </div>
       </div>
     </div>

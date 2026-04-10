@@ -1,16 +1,33 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState, useTransition } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUp, ArrowLeft } from 'lucide-react';
+import { ArrowUp, ArrowLeft, Globe, Map } from 'lucide-react';
 import { fetchRecommendations, type Recommendation } from '@/lib/api';
 import CanodeskMap from '@/components/CanodeskMap';
 
-type HeatLayer = 'heat2020' | 'heat2024';
+// Lazy-load Cesium to keep initial bundle small
+const CesiumMap = lazy(() => import('@/components/CesiumMap'));
+
+type HeatLayer  = 'heat2020' | 'heat2024';
+type MapMode    = '2d' | '3d';
 
 export default function HeatMap() {
-  const [rec, setRec]           = useState<Recommendation | null>(null);
-  const [layer, setLayer]       = useState<HeatLayer>('heat2024');
+  const [rec,       setRec]       = useState<Recommendation | null>(null);
+  const [layer,     setLayer]     = useState<HeatLayer>('heat2024');
+  const [mapMode,   setMapMode]   = useState<MapMode>('2d');
+  const [fading,    setFading]    = useState(false);
+  const [,          startTransition] = useTransition();
 
   useEffect(() => { fetchRecommendations().then(setRec); }, []);
+
+  // ── Smooth fade transition when toggling 2D ↔ 3D ────────────────────────────
+  const toggleMode = (next: MapMode) => {
+    if (next === mapMode) return;
+    setFading(true);
+    setTimeout(() => {
+      startTransition(() => setMapMode(next));
+      setFading(false);
+    }, 300);
+  };
 
   return (
     <div className="h-screen flex pt-16">
@@ -32,9 +49,39 @@ export default function HeatMap() {
 
         <hr className="border-border" />
 
-        {/* Layer Toggle */}
+        {/* ── 2D / 3D Mode Toggle ──────────────────────────────────────── */}
         <div>
-          <p className="font-mono text-[10px] text-canodesk-text-muted tracking-wider mb-2">SELECT LAYER</p>
+          <p className="font-mono text-[10px] text-canodesk-text-muted tracking-wider mb-2">MAP MODE</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => toggleMode('2d')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-body font-semibold text-sm border transition-all duration-300
+                ${mapMode === '2d'
+                  ? 'bg-canodesk-green text-white border-canodesk-green shadow-lg shadow-green-500/20'
+                  : 'border-border text-canodesk-text-muted hover:border-canodesk-green hover:text-canodesk-green'}`}
+            >
+              <Map size={14} /> 2D View
+            </button>
+            <button
+              onClick={() => toggleMode('3d')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-body font-semibold text-sm border transition-all duration-300
+                ${mapMode === '3d'
+                  ? 'bg-canodesk-navy text-white border-canodesk-navy shadow-lg'
+                  : 'border-border text-canodesk-text-muted hover:border-canodesk-navy hover:text-canodesk-navy'}`}
+            >
+              <Globe size={14} /> 3D View
+            </button>
+          </div>
+          {mapMode === '3d' && (
+            <p className="font-body text-[10px] text-canodesk-text-muted mt-2 text-center animate-fadeUp">
+              ✨ Cinematic 3D • Click zones for details
+            </p>
+          )}
+        </div>
+
+        {/* ── Heat Layer Toggle ─────────────────────────────────────────── */}
+        <div>
+          <p className="font-mono text-[10px] text-canodesk-text-muted tracking-wider mb-2">SELECT YEAR</p>
           <div className="bg-muted rounded-3xl p-1 flex h-11">
             <button
               onClick={() => setLayer('heat2020')}
@@ -100,18 +147,64 @@ export default function HeatMap() {
         )}
 
         <p className="font-body text-[11px] text-canodesk-text-muted mt-auto">
-          NASA Landsat 8 • Thermal Band ST_B10 • 30m Resolution • Click zone on map for details
+          {mapMode === '2d'
+            ? 'NASA Landsat 8 • Thermal Band ST_B10 • 30m • Click zone for details'
+            : 'Cesium World Terrain • NASA Landsat 8 • Click zone for 3D data'}
         </p>
       </div>
 
-      {/* ── Map ─────────────────────────────────────────────────────────── */}
+      {/* ── Map Container with fade transition ──────────────────────────── */}
       <div className="flex-1 relative hidden lg:flex flex-col">
-        <div className="flex-1 relative">
-          <CanodeskMap activeLayer={layer} />
+        <div
+          className="flex-1 relative"
+          style={{
+            opacity:    fading ? 0 : 1,
+            transition: 'opacity 300ms ease',
+          }}
+        >
+          {/* 2D Leaflet map */}
+          <div
+            className="absolute inset-0"
+            style={{
+              opacity:    mapMode === '2d' ? 1 : 0,
+              pointerEvents: mapMode === '2d' ? 'all' : 'none',
+              transition: 'opacity 300ms ease',
+              zIndex:     mapMode === '2d' ? 1 : 0,
+            }}
+          >
+            <CanodeskMap activeLayer={layer} />
+          </div>
+
+          {/* 3D Cesium map */}
+          <div
+            className="absolute inset-0"
+            style={{
+              opacity:    mapMode === '3d' ? 1 : 0,
+              pointerEvents: mapMode === '3d' ? 'all' : 'none',
+              transition: 'opacity 300ms ease',
+              zIndex:     mapMode === '3d' ? 1 : 0,
+            }}
+          >
+            <Suspense
+              fallback={
+                <div className="w-full h-full flex items-center justify-center bg-[#0a1628]">
+                  <div className="text-center">
+                    <div className="w-10 h-10 rounded-full border-4 border-canodesk-green border-t-transparent animate-spin mx-auto mb-3" />
+                    <p className="font-mono text-xs text-canodesk-green tracking-wider">LOADING 3D ENGINE...</p>
+                  </div>
+                </div>
+              }
+            >
+              <CesiumMap activeLayer={layer} />
+            </Suspense>
+          </div>
         </div>
+
         {/* Footer strip */}
-        <div className="bg-card/90 backdrop-blur-sm h-8 flex items-center px-4 text-[11px] font-body text-canodesk-text-muted border-t border-border z-10 shrink-0">
-          🛰️ Satellite: ESRI World Imagery &nbsp;|&nbsp; Thermal overlay: NASA Landsat 8 &nbsp;|&nbsp; GeoJSON: Bannerghatta zone boundary
+        <div className="bg-card/90 backdrop-blur-sm h-8 flex items-center px-4 text-[11px] font-body text-canodesk-text-muted border-t border-border z-30 shrink-0">
+          {mapMode === '2d'
+            ? '🗺️ 2D Mode: ESRI Satellite | NASA Landsat 8 thermal | GeoJSON zones'
+            : '🌍 3D Mode: Cesium World Terrain | NASA Landsat 8 thermal | Click zones for popup'}
         </div>
       </div>
     </div>
