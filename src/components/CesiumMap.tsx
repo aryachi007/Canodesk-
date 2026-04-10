@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Plus, Minus } from 'lucide-react';
 
 // ─── Types for Cesium (loaded dynamically to avoid SSR/build issues) ──────────
 type CesiumViewer = any;
@@ -177,12 +178,43 @@ export default function CesiumMap({ activeLayer }: CesiumMapProps) {
     })();
   }, [activeLayer]);
 
+  // ── Manual UI Zoom Handlers ──────────────────────────────────────────────────
+  const handleZoomIn = () => {
+    if (viewerRef.current) {
+      viewerRef.current.camera.zoomIn(30000); // 30km step
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (viewerRef.current) {
+      viewerRef.current.camera.zoomOut(30000); // 30km step
+    }
+  };
+
   return (
-    <div
-      ref={containerRef}
-      style={{ width: '100%', height: '100%', background: '#0a1628' }}
-      className="cesium-container"
-    />
+    <div className="relative w-full h-full">
+      <div
+        ref={containerRef}
+        style={{ width: '100%', height: '100%', background: '#0a1628' }}
+        className="cesium-container"
+      />
+      <div className="absolute bottom-6 right-6 flex flex-col gap-2 z-[9999] pointer-events-auto">
+        <button 
+          onClick={handleZoomIn} 
+          className="w-10 h-10 bg-[#0f172a] border border-[#1e293b] rounded-xl flex items-center justify-center text-[#94a3b8] hover:text-[#22c55e] hover:border-[#22c55e] transition-all shadow-xl backdrop-blur-sm"
+          title="Zoom In"
+        >
+          <Plus size={20} />
+        </button>
+        <button 
+          onClick={handleZoomOut} 
+          className="w-10 h-10 bg-[#0f172a] border border-[#1e293b] rounded-xl flex items-center justify-center text-[#94a3b8] hover:text-[#22c55e] hover:border-[#22c55e] transition-all shadow-xl backdrop-blur-sm"
+          title="Zoom Out"
+        >
+          <Minus size={20} />
+        </button>
+      </div>
+    </div>
   );
 }
 
