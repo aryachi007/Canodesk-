@@ -192,7 +192,7 @@ export default function GreenCover() {
             className="absolute inset-0"
             style={{
               opacity:       mapMode === '2d' ? 1 : 0,
-              pointerEvents: mapMode === '2d' ? 'all' : 'none',
+              pointerEvents: mapMode === '2d' ? 'auto' : 'none',
               transition:    'opacity 300ms ease',
               zIndex:        mapMode === '2d' ? 1 : 0,
             }}
@@ -205,7 +205,7 @@ export default function GreenCover() {
             className="absolute inset-0"
             style={{
               opacity:       mapMode === '3d' ? 1 : 0,
-              pointerEvents: mapMode === '3d' ? 'all' : 'none',
+              pointerEvents: mapMode === '3d' ? 'auto' : 'none',
               transition:    'opacity 300ms ease',
               zIndex:        mapMode === '3d' ? 1 : 0,
             }}

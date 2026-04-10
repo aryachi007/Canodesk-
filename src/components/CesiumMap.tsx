@@ -67,6 +67,14 @@ export default function CesiumMap({ activeLayer }: CesiumMapProps) {
       viewer.scene.moon.show            = false;
       viewer.scene.backgroundColor      = Cesium.Color.fromCssColorString('#0a1628');
 
+      // Enable full camera controls
+      viewer.scene.screenSpaceCameraController.enableZoom = true;
+      viewer.scene.screenSpaceCameraController.enableRotate = true;
+      viewer.scene.screenSpaceCameraController.enableTilt = true;
+      viewer.scene.screenSpaceCameraController.enableTranslate = true;
+      viewer.scene.screenSpaceCameraController.minimumZoomDistance = 100;
+      viewer.scene.screenSpaceCameraController.maximumZoomDistance = 20000000;
+
       // ── Cinematic fly-in animation ─────────────────────────────────────────
       const destination = Cesium.Cartesian3.fromDegrees(77.5590, 12.7621, 160000);
       viewer.camera.setView({
@@ -88,9 +96,9 @@ export default function CesiumMap({ activeLayer }: CesiumMapProps) {
       try {
         const zonesJson = await import('../data/BENGALURU_ZONES.json');
         const dataSource = await Cesium.GeoJsonDataSource.load(zonesJson.default, {
-          stroke:       Cesium.Color.fromCssColorString('#00ff88').withAlpha(0.9),
-          fill:         Cesium.Color.fromCssColorString('#00ff88').withAlpha(0.08),
-          strokeWidth:  3,
+          stroke:       Cesium.Color.fromCssColorString('#ff3300').withAlpha(0.9),
+          fill:         Cesium.Color.fromCssColorString('#ff3300').withAlpha(0.4),
+          strokeWidth:  4,
           clampToGround: true,
         });
         await viewer.dataSources.add(dataSource);
@@ -132,6 +140,12 @@ export default function CesiumMap({ activeLayer }: CesiumMapProps) {
                 </div>
               </div>`
             );
+
+            // Trigger the cinematic 'zooming effect' into the polygon
+            viewer.flyTo(entity, {
+              duration: 2.0,
+              offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-45), 20000)
+            });
           }
         });
       } catch (err) {

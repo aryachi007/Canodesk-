@@ -110,6 +110,27 @@ export default function CanodeskMap({ activeLayer }: CanodeskMapProps) {
             </div>
           </div>
         `, { maxWidth: 240 });
+
+        // Add heat circle
+        if (typeof (layer as any).getBounds === 'function') {
+          const center = (layer as any).getBounds().getCenter();
+          const heatScore = p.heat_score || 35;
+          let circleColor = '#22c55e'; // low -> green
+          if (heatScore > 37) circleColor = '#ef4444'; // high -> red
+          else if (heatScore >= 34) circleColor = '#f97316'; // medium -> orange
+
+          const className = heatScore > 37 ? 'heat-glow-circle' : '';
+          
+          L.circle(center, {
+            radius: heatScore * 40,
+            color: circleColor,
+            fillColor: circleColor,
+            fillOpacity: 0.4,
+            weight: 2,
+            className: className,
+            interactive: false // ensure it doesn't block clicks from the polygon
+          }).addTo(map);
+        }
       },
     }).addTo(map);
 

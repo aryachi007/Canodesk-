@@ -109,20 +109,20 @@ export default function HeatMap() {
             </span>
           </div>
           <p className="font-mono text-6xl font-bold text-canodesk-red leading-none mb-4">
-            {layer === 'heat2024' ? '45' : '41'}°C
+            {layer === 'heat2024' ? '38.5' : '35.0'}°C
           </p>
           <div className="w-full bg-muted rounded h-2 mb-2">
             <div className="bg-canodesk-red h-2 rounded transition-all duration-700"
               style={{ width: layer === 'heat2024' ? '90%' : '75%' }} />
           </div>
-          <p className="font-mono text-[10px] text-canodesk-text-muted mb-3">CRITICAL THRESHOLD</p>
+          <p className="font-mono text-[10px] text-canodesk-text-muted mb-3">SURFACE TEMPERATURE (°C)</p>
           <div className="flex justify-between text-sm">
-            <span className="font-body text-canodesk-text-muted">2020: 41°C</span>
+            <span className="font-body text-canodesk-text-muted">2020: 35.0°C</span>
             <span className="font-mono font-bold text-canodesk-red flex items-center gap-1">
-              2024: 45°C <ArrowUp size={14} />
+              2024: 38.5°C <ArrowUp size={14} />
             </span>
           </div>
-          <p className="font-mono text-sm font-bold text-canodesk-red mt-2">+4°C ↑</p>
+          <p className="font-mono text-sm font-bold text-canodesk-red mt-2">+3.5°C ↑</p>
         </div>
 
         {/* Heat scale legend */}
@@ -167,7 +167,7 @@ export default function HeatMap() {
             className="absolute inset-0"
             style={{
               opacity:    mapMode === '2d' ? 1 : 0,
-              pointerEvents: mapMode === '2d' ? 'all' : 'none',
+              pointerEvents: mapMode === '2d' ? 'auto' : 'none',
               transition: 'opacity 300ms ease',
               zIndex:     mapMode === '2d' ? 1 : 0,
             }}
@@ -180,7 +180,7 @@ export default function HeatMap() {
             className="absolute inset-0"
             style={{
               opacity:    mapMode === '3d' ? 1 : 0,
-              pointerEvents: mapMode === '3d' ? 'all' : 'none',
+              pointerEvents: mapMode === '3d' ? 'auto' : 'none',
               transition: 'opacity 300ms ease',
               zIndex:     mapMode === '3d' ? 1 : 0,
             }}
