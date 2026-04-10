@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "BENGALURU_ZONES",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "id": null, "zone_name": "BANEERGHATTA", "heat_score": 45, "ndvi_score": 0.62, "alert_stat": "LOW" }, "geometry": { "type": "MultiPolygon", "coordinates": [ [ [ [ 77.500047814119071, 12.821137537033133 ], [ 77.500047814119071, 12.703160186692978 ], [ 77.618025164459226, 12.700122143336579 ], [ 77.618531505018638, 12.819112174795533 ], [ 77.500047814119071, 12.821137537033133 ] ] ] ] } }
+]
+}

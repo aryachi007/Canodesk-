@@ -1,0 +1,313 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 140 10% 97%;
+    --foreground: 215 28% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 28% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 28% 10%;
+    --primary: 142 76% 36%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 138 76% 97%;
+    --secondary-foreground: 142 76% 36%;
+    --muted: 210 17% 95%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 142 71% 45%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 20% 90%;
+    --input: 214 20% 90%;
+    --ring: 142 76% 36%;
+    --radius: 1rem;
+
+    /* Canodesk custom tokens */
+    --canodesk-hero-start: 150 66% 18%;
+    --canodesk-hero-mid: 144 63% 29%;
+    --canodesk-hero-end: 207 56% 11%;
+    --canodesk-dark: 215 56% 10%;
+    --canodesk-neon: 153 100% 50%;
+    --canodesk-green-light: 138 76% 97%;
+    --canodesk-green-text: 152 81% 73%;
+    --canodesk-ticker: 150 70% 10%;
+    --canodesk-alert-red: 0 72% 51%;
+    --canodesk-warning: 21 90% 48%;
+    --canodesk-text-secondary: 215 16% 43%;
+    --canodesk-text-muted: 213 15% 63%;
+    --canodesk-card-shadow: 0 4px 24px rgba(22,163,74,0.08);
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 215 28% 10%;
+    --sidebar-primary: 142 76% 36%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 138 76% 97%;
+    --sidebar-accent-foreground: 142 76% 36%;
+    --sidebar-border: 214 20% 90%;
+    --sidebar-ring: 142 76% 36%;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  @apply bg-background text-foreground;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+}
+
+/* Typography utility classes */
+.font-heading {
+  font-family: 'Space Grotesk', sans-serif;
+}
+.font-mono-data {
+  font-family: 'JetBrains Mono', monospace;
+}
+.font-body {
+  font-family: 'Inter', sans-serif;
+}
+
+/* Canodesk animations */
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.4; }
+}
+@keyframes pulse-red {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.4; }
+}
+@keyframes shimmer {
+  from { background-position: -200px 0; }
+  to { background-position: 200px 0; }
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes leaf-rotate {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(5deg); }
+}
+@keyframes jiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-8deg); }
+  50% { transform: rotate(8deg); }
+  75% { transform: rotate(-4deg); }
+}
+@keyframes ripple {
+  0% { box-shadow: 0 0 0 0 rgba(220,38,38,0.7); }
+  70% { box-shadow: 0 0 0 20px rgba(220,38,38,0); }
+  100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+}
+@keyframes float-particle {
+  from { transform: translateY(0); }
+  to { transform: translateY(-110vh); }
+}
+@keyframes orbit-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes signal-pulse {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.6; }
+}
+@keyframes draw-line {
+  from { stroke-dashoffset: 100; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes constellation-drift {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(10px, -10px); }
+}
+
+.animate-pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+.animate-pulse-red { animation: pulse-red 1.5s ease-in-out infinite; }
+.animate-shimmer { animation: shimmer 1.5s linear infinite; background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--border)) 50%, hsl(var(--muted)) 75%); background-size: 400px 100%; }
+.animate-marquee { animation: marquee 25s linear infinite; }
+.animate-fadeUp { animation: fadeUp 0.6s ease forwards; opacity: 0; }
+.animate-leaf { animation: leaf-rotate 3s ease-in-out infinite; }
+.animate-jiggle { animation: jiggle 0.5s ease-in-out; }
+.animate-ripple { animation: ripple 1.5s infinite; }
+.animate-orbit { animation: orbit-rotate 20s linear infinite; }
+.animate-signal-1 { animation: signal-pulse 2s ease-in-out infinite; }
+.animate-signal-2 { animation: signal-pulse 2s ease-in-out 0.3s infinite; }
+.animate-signal-3 { animation: signal-pulse 2s ease-in-out 0.6s infinite; }
+.animate-constellation { animation: constellation-drift 6s ease-in-out infinite alternate; }
+
+.stagger-1 { animation-delay: 0ms; }
+.stagger-2 { animation-delay: 100ms; }
+.stagger-3 { animation-delay: 200ms; }
+.stagger-4 { animation-delay: 300ms; }
+
+/* Hero gradient */
+.canodesk-hero-gradient {
+  background: linear-gradient(135deg, #0f4c2a 0%, #1a7a45 35%, #0a1628 100%);
+}
+.canodesk-dark-section {
+  background: #0a1628;
+}
+.canodesk-green-section {
+  background: #f0fdf4;
+}
+.canodesk-ticker-bg {
+  background: #052e16;
+}
+.canodesk-footer-bg {
+  background: #0f4c2a;
+}
+
+/* Glass navbar */
+.canodesk-navbar {
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 1px 12px rgba(0,0,0,0.06);
+}
+
+/* Card styling */
+.canodesk-card {
+  background: hsl(var(--card));
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(22,163,74,0.08);
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+.canodesk-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px rgba(22,163,74,0.15);
+}
+
+/* Dark card */
+.canodesk-dark-card {
+  background: rgba(15,23,42,0.85);
+  border: 1px solid rgba(0,255,136,0.2);
+  border-radius: 20px;
+}
+
+/* Buttons */
+.canodesk-btn {
+  border-radius: 12px;
+  padding: 14px 28px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+  cursor: pointer;
+}
+.canodesk-btn:hover {
+  transform: scale(1.02);
+}
+.canodesk-btn-primary {
+  background: white;
+  color: #16a34a;
+}
+.canodesk-btn-primary:hover {
+  box-shadow: 0 8px 24px rgba(255,255,255,0.3);
+}
+.canodesk-btn-secondary {
+  background: transparent;
+  border: 1px solid white;
+  color: white;
+}
+.canodesk-btn-secondary:hover {
+  background: white;
+  color: #16a34a;
+}
+
+/* Pill badges */
+.canodesk-pill {
+  border-radius: 9999px;
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.canodesk-pill-green {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+.canodesk-pill-red {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+.canodesk-pill-dark {
+  background: #0f172a;
+  color: #00ff88;
+  border: 1px solid rgba(0,255,136,0.3);
+}
+
+/* Glow effects */
+.glow-green {
+  filter: drop-shadow(0 0 8px #00ff88);
+}
+.glow-red {
+  text-shadow: 0 0 20px rgba(220,38,38,0.5);
+}
+.glow-green-text {
+  text-shadow: 0 0 30px rgba(0,255,136,0.3);
+}
+
+/* Gradient bars */
+.heat-gradient {
+  background: linear-gradient(to right, #3b82f6, #22c55e, #eab308, #f97316, #dc2626);
+}
+.ndvi-gradient {
+  background: linear-gradient(to right, #dc2626, #eab308, #16a34a);
+}
+
+/* ── Leaflet map fixes ──────────────────────────────────────────────────── */
+.leaflet-container {
+  z-index: 0;
+  cursor: grab;
+  pointer-events: all;
+}
+.leaflet-container:active {
+  cursor: grabbing;
+}
+/* Ensure popups appear above other UI */
+.leaflet-popup {
+  z-index: 800;
+}
+.leaflet-popup-content-wrapper {
+  background: rgba(15,23,42,0.95);
+  border: 1px solid rgba(0,255,136,0.3);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  color: white;
+  padding: 0;
+}
+.leaflet-popup-tip {
+  background: rgba(15,23,42,0.95);
+}
+.leaflet-popup-close-button {
+  color: #94a3b8 !important;
+  font-size: 16px !important;
+  top: 6px !important;
+  right: 8px !important;
+}
+
+/* Skeleton loader */
+.skeleton-box {
+  border-radius: 12px;
+  overflow: hidden;
+}
