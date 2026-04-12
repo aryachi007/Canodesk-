@@ -10,18 +10,32 @@ const CesiumMap = lazy(() => import('@/components/CesiumMap'));
 type HeatLayer  = 'heat2020' | 'heat2024';
 type MapMode    = '2d' | '3d';
 
+// Fix 3 — WebGL detection for Mapbox/Cesium fallback
+function isWebGLSupported() {
+  try {
+    const canvas = document.createElement('canvas');
+    return !!(window.WebGLRenderingContext &&
+      (canvas.getContext('webgl') ||
+      canvas.getContext('experimental-webgl')));
+  } catch(e) {
+    return false;
+  }
+}
+
 export default function HeatMap() {
   const [rec,       setRec]       = useState<Recommendation | null>(null);
   const [layer,     setLayer]     = useState<HeatLayer>('heat2024');
   const [mapMode,   setMapMode]   = useState<MapMode>('2d');
   const [fading,    setFading]    = useState(false);
   const [,          startTransition] = useTransition();
+  const [webGL]                     = useState(() => isWebGLSupported());
 
   useEffect(() => { fetchRecommendations().then(setRec); }, []);
 
   // ── Smooth fade transition when toggling 2D ↔ 3D ────────────────────────────
   const toggleMode = (next: MapMode) => {
     if (next === mapMode) return;
+    if (next === '3d' && !webGL) return; // block 3D if no WebGL
     setFading(true);
     setTimeout(() => {
       startTransition(() => setMapMode(next));
@@ -30,10 +44,10 @@ export default function HeatMap() {
   };
 
   return (
-    <div className="h-screen flex pt-16">
+    <div className="map-page-layout h-screen flex pt-16">
 
       {/* ── Sidebar ─────────────────────────────────────────────────────── */}
-      <div className="w-full lg:w-[340px] shrink-0 bg-card border-r border-border overflow-y-auto p-6 flex flex-col gap-5">
+      <div className="map-sidebar w-full lg:w-[340px] shrink-0 bg-card border-r border-border overflow-y-auto p-6 flex flex-col gap-5">
 
         <Link to="/" className="flex items-center gap-1 text-sm text-canodesk-text-muted hover:text-canodesk-green transition-colors">
           <ArrowLeft size={14} /> Home
@@ -64,15 +78,23 @@ export default function HeatMap() {
             </button>
             <button
               onClick={() => toggleMode('3d')}
+              disabled={!webGL}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-body font-semibold text-sm border transition-all duration-300
-                ${mapMode === '3d'
-                  ? 'bg-canodesk-navy text-white border-canodesk-navy shadow-lg'
-                  : 'border-border text-canodesk-text-muted hover:border-canodesk-navy hover:text-canodesk-navy'}`}
+                ${!webGL
+                  ? 'opacity-40 cursor-not-allowed border-border text-canodesk-text-muted'
+                  : mapMode === '3d'
+                    ? 'bg-canodesk-navy text-white border-canodesk-navy shadow-lg'
+                    : 'border-border text-canodesk-text-muted hover:border-canodesk-navy hover:text-canodesk-navy'}`}
             >
               <Globe size={14} /> 3D View
             </button>
           </div>
-          {mapMode === '3d' && (
+          {!webGL && (
+            <p className="font-body text-[10px] text-canodesk-text-muted mt-2 text-center">
+              ⚠️ WebGL not supported — 3D disabled
+            </p>
+          )}
+          {mapMode === '3d' && webGL && (
             <p className="font-body text-[10px] text-canodesk-text-muted mt-2 text-center animate-fadeUp">
               ✨ Cinematic 3D • Click zones for details
             </p>
@@ -154,7 +176,7 @@ export default function HeatMap() {
       </div>
 
       {/* ── Map Container with fade transition ──────────────────────────── */}
-      <div className="flex-1 relative hidden lg:flex flex-col">
+      <div className="map-container flex-1 relative flex flex-col">
         <div
           className="flex-1 relative"
           style={{
@@ -175,29 +197,31 @@ export default function HeatMap() {
             <CanodeskMap activeLayer={layer} />
           </div>
 
-          {/* 3D Cesium map */}
-          <div
-            className="absolute inset-0"
-            style={{
-              opacity:    mapMode === '3d' ? 1 : 0,
-              pointerEvents: mapMode === '3d' ? 'auto' : 'none',
-              transition: 'opacity 300ms ease',
-              zIndex:     mapMode === '3d' ? 1 : 0,
-            }}
-          >
-            <Suspense
-              fallback={
-                <div className="w-full h-full flex items-center justify-center bg-[#0a1628]">
-                  <div className="text-center">
-                    <div className="w-10 h-10 rounded-full border-4 border-canodesk-green border-t-transparent animate-spin mx-auto mb-3" />
-                    <p className="font-mono text-xs text-canodesk-green tracking-wider">LOADING 3D ENGINE...</p>
-                  </div>
-                </div>
-              }
+          {/* 3D Cesium map (only if WebGL supported) */}
+          {webGL && (
+            <div
+              className="absolute inset-0"
+              style={{
+                opacity:    mapMode === '3d' ? 1 : 0,
+                pointerEvents: mapMode === '3d' ? 'auto' : 'none',
+                transition: 'opacity 300ms ease',
+                zIndex:     mapMode === '3d' ? 1 : 0,
+              }}
             >
-              <CesiumMap activeLayer={layer} />
-            </Suspense>
-          </div>
+              <Suspense
+                fallback={
+                  <div className="w-full h-full flex items-center justify-center bg-[#0a1628]">
+                    <div className="text-center">
+                      <div className="w-10 h-10 rounded-full border-4 border-canodesk-green border-t-transparent animate-spin mx-auto mb-3" />
+                      <p className="font-mono text-xs text-canodesk-green tracking-wider">LOADING 3D ENGINE...</p>
+                    </div>
+                  </div>
+                }
+              >
+                <CesiumMap activeLayer={layer} />
+              </Suspense>
+            </div>
+          )}
         </div>
 
         {/* Footer strip */}

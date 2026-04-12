@@ -46,9 +46,15 @@ export default function CanodeskMap({ activeLayer }: CanodeskMapProps) {
       center:     CENTER,
       zoom:       11,
       zoomControl: true,
+      touchZoom:   true,
+      tap:         true,
+      dragging:    true,
       contextmenu: false,
     });
     mapRef.current = map;
+
+    // Fix 6 — Resize/invalidate on mount so tiles render in dynamic containers
+    setTimeout(() => { map.invalidateSize(); }, 100);
 
     // Base tile layer – ESRI World Imagery (satellite look, no API key)
     L.tileLayer(
