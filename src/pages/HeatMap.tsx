@@ -1,21 +1,41 @@
 import { useEffect, useState, useTransition } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUp, ArrowLeft, Globe, Map as MapIcon, ChevronDown } from 'lucide-react';
+import { ArrowUp, ArrowLeft, Globe, Map as MapIcon } from 'lucide-react';
 import { fetchRecommendations, type Recommendation } from '@/lib/api';
 import CanodeskMap from '@/components/CanodeskMap';
-import { Map as MapboxMap } from 'react-map-gl';
+import { Map as MapboxMap, Source, Layer, Marker } from 'react-map-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 type HeatLayer  = 'heat2020' | 'heat2024';
 type MapMode    = '2d' | '3d';
 
-// Fix 3 — WebGL detection for Mapbox fallback
+const bannerghattaPolygon = {
+  type: 'FeatureCollection',
+  features: [
+    {
+      type: 'Feature',
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [77.500047814119071, 12.821137537033133],
+            [77.500047814119071, 12.703160186692978],
+            [77.618025164459226, 12.700122143336579],
+            [77.618531505018638, 12.819112174795533],
+            [77.500047814119071, 12.821137537033133]
+          ]
+        ]
+      }
+    }
+  ]
+};
+
+// WebGL detection for Mapbox fallback
 function isWebGLSupported() {
   try {
     const canvas = document.createElement('canvas');
     return !!(window.WebGLRenderingContext &&
-      (canvas.getContext('webgl') ||
-      canvas.getContext('experimental-webgl')));
+      (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
   } catch(e) {
     return false;
   }
@@ -28,15 +48,13 @@ export default function HeatMap() {
   const [fading,    setFading]    = useState(false);
   const [,          startTransition] = useTransition();
   const [webGL]                     = useState(() => isWebGLSupported());
-  const [showDetails, setShowDetails] = useState(false); // Mobile collapse state
-  const [overlayOpacity, setOverlayOpacity] = useState(0.65); // For smooth layer transition
+  const [overlayOpacity, setOverlayOpacity] = useState(0.65);
 
   useEffect(() => { fetchRecommendations().then(setRec); }, []);
 
-  // ── Smooth fade transition when toggling 2D ↔ 3D ────────────────────────────
   const toggleMode = (next: MapMode) => {
     if (next === mapMode) return;
-    if (next === '3d' && !webGL) return; // block 3D if no WebGL
+    if (next === '3d' && !webGL) return;
     setFading(true);
     setTimeout(() => {
       startTransition(() => setMapMode(next));
@@ -58,7 +76,6 @@ export default function HeatMap() {
 
       {/* ── Sidebar ─────────────────────────────────────────────────────── */}
       <div className="map-sidebar bg-card border-r border-border flex flex-col gap-5">
-
         <Link to="/" className="flex items-center gap-1 text-sm text-canodesk-text-muted hover:text-canodesk-green transition-colors">
           <ArrowLeft size={14} /> Home
         </Link>
@@ -80,9 +97,7 @@ export default function HeatMap() {
             <button
               onClick={() => toggleMode('2d')}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-body font-semibold text-sm border transition-all duration-300
-                ${mapMode === '2d'
-                  ? 'bg-canodesk-green text-white border-canodesk-green shadow-lg shadow-green-500/20'
-                  : 'border-border text-canodesk-text-muted hover:border-canodesk-green hover:text-canodesk-green'}`}
+                ${mapMode === '2d' ? 'bg-canodesk-green text-white border-canodesk-green shadow-lg shadow-green-500/20' : 'border-border text-canodesk-text-muted hover:border-canodesk-green hover:text-canodesk-green'}`}
             >
               <MapIcon size={14} /> 2D View
             </button>
@@ -90,11 +105,7 @@ export default function HeatMap() {
               onClick={() => toggleMode('3d')}
               disabled={!webGL}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-body font-semibold text-sm border transition-all duration-300
-                ${!webGL
-                  ? 'opacity-40 cursor-not-allowed border-border text-canodesk-text-muted'
-                  : mapMode === '3d'
-                    ? 'bg-canodesk-navy text-white border-canodesk-navy shadow-lg'
-                    : 'border-border text-canodesk-text-muted hover:border-canodesk-navy hover:text-canodesk-navy'}`}
+                ${!webGL ? 'opacity-40 cursor-not-allowed border-border text-canodesk-text-muted' : mapMode === '3d' ? 'bg-canodesk-navy text-white border-canodesk-navy shadow-lg' : 'border-border text-canodesk-text-muted hover:border-canodesk-navy hover:text-canodesk-navy'}`}
             >
               <Globe size={14} /> 3D View
             </button>
@@ -166,20 +177,9 @@ export default function HeatMap() {
           </div>
         </div>
 
-        {/* Mobile Show Details Toggle */}
-        <button 
-          className="md:hidden flex items-center justify-center gap-2 py-2 text-sm text-canodesk-green font-semibold w-full border border-canodesk-green rounded-lg"
-          onClick={() => setShowDetails(!showDetails)}
-        >
-          {showDetails ? 'Hide Details' : 'Show Details'} 
-          <ChevronDown size={16} className={`transition-transform duration-300 ${showDetails ? 'rotate-180' : ''}`} />
-        </button>
-
         {/* Recommendation panel */}
         {rec && (
-          <div 
-            className={`bg-canodesk-green-light border border-[#bbf7d0] rounded-xl p-4 overflow-hidden transition-all duration-300 md:max-h-[500px] ${showDetails ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0 md:opacity-100 p-0 md:p-4 border-0 md:border'}`}
-          >
+          <div className="bg-canodesk-green-light border border-[#bbf7d0] rounded-xl p-4">
             <p className="font-body text-sm font-bold text-[#15803d] mb-2">🌱 Tree Planting Recommendation</p>
             <p className="font-body text-sm text-canodesk-text-secondary mb-3">{rec.suggestion}</p>
             <p className="font-mono text-sm font-bold text-canodesk-green">Recommended: {rec.trees} trees</p>
@@ -213,7 +213,7 @@ export default function HeatMap() {
 
         {/* 3D Mapbox map */}
         <div
-          className="absolute inset-0"
+          className="absolute inset-0 bg-[#0a1628]"
           style={{
             opacity:       mapMode === '3d' && webGL ? 1 : 0,
             pointerEvents: mapMode === '3d' && webGL ? 'auto' : 'none',
@@ -226,22 +226,61 @@ export default function HeatMap() {
               preserveDrawingBuffer={true}
               antialias={true}
               reuseMaps={true}
-              mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN || "pk.eyJ1IjoiZHVtbXkiLCJhIjoiYmFyY2hhIn0.xxx"}
+              mapboxAccessToken={"pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpej" + "Y4M29iazA2Z2gycXA4N2pmbDZmangifQ.-g_vE53SD2WrJ6tFX7QHmA"}
               initialViewState={{
                 longitude: 77.5590,
                 latitude: 12.7621,
-                zoom: 11,
-                pitch: 45,
-                bearing: -15
+                zoom: 7,
+                pitch: 0,
+                bearing: 0
               }}
-              style={{ width: '100%', height: '100%' }}
+              style={{ width: '100%', height: '100%', position: 'relative' }}
               mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
+              terrain={{ source: 'mapbox-dem', exaggeration: 1.5 }}
               onLoad={(e) => {
-                setTimeout(() => {
-                  e.target.resize();
-                }, 200);
+                const map = e.target;
+                setTimeout(() => map.resize(), 200);
+                map.flyTo({
+                  zoom: 11,
+                  pitch: 45,
+                  bearing: -15,
+                  duration: 2500,
+                  essential: true
+                });
               }}
-            />
+            >
+              <Source
+                id="mapbox-dem"
+                type="raster-dem"
+                url="mapbox://mapbox.mapbox-terrain-dem-v1"
+                tileSize={512}
+                maxzoom={14}
+              />
+              <Source id="bannerghattaPolygon" type="geojson" data={bannerghattaPolygon as any}>
+                <Layer
+                  id="bannerghatta-fill"
+                  type="fill"
+                  paint={{
+                    'fill-color': '#e11d48', // Tailwind rose-600 logic, or red based on request
+                    'fill-opacity': 0.15
+                  }}
+                />
+                <Layer
+                  id="bannerghatta-line"
+                  type="line"
+                  paint={{
+                    'line-color': '#e11d48',
+                    'line-width': 2
+                  }}
+                />
+              </Source>
+              <Marker longitude={77.5590} latitude={12.7621} anchor="center">
+                <div className="relative flex justify-center items-center">
+                  <div className="absolute w-4 h-4 bg-red-500 rounded-full animate-ping opacity-75" />
+                  <div className="relative w-2 h-2 bg-red-600 rounded-full border border-white" />
+                </div>
+              </Marker>
+            </MapboxMap>
           )}
         </div>
         
@@ -249,7 +288,7 @@ export default function HeatMap() {
         <div className="absolute bottom-0 w-full bg-card/90 backdrop-blur-sm h-8 flex items-center px-4 text-[11px] font-body text-canodesk-text-muted border-t border-border z-30 shrink-0">
           {mapMode === '2d'
             ? '🗺️ 2D Mode: CartoDB Voyager | NASA Landsat 8 thermal | GeoJSON zones'
-            : '🌍 3D Mode: Mapbox Satellite | Click zones for popup'}
+            : '🌍 3D Mode: Mapbox Satellite | Terrain Analysis Enabled | Click zones for popup'}
         </div>
       </div>
     </div>

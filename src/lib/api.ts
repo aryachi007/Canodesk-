@@ -139,7 +139,7 @@ export const fetchRecommendations = async (): Promise<Recommendation> => {
 
 export const fetchZoneData = async (): Promise<ZoneData | null> => {
   try {
-    const { data } = await api.get('/api/zones');
+    const { data } = await api.get('/api/heat/hotspots');
     if (!data.success || !data.data?.length) return null;
     const z = data.data[0];
     return {
@@ -165,7 +165,7 @@ export const fetchZoneData = async (): Promise<ZoneData | null> => {
 
 export const fetchGreenTrends = async (): Promise<GreenTrends> => {
   try {
-    const { data } = await api.get('/api/green/trends');
+    const { data } = await api.get('/api/green/deforestation');
     return {
       ndvi2020: data.trend_lines?.[0]?.avg_ndvi ?? 0.74,
       ndvi2024: data.trend_lines?.[1]?.avg_ndvi ?? 0.62,
