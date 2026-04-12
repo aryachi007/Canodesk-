@@ -1,16 +1,16 @@
-import { lazy, Suspense, useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Globe, Map } from 'lucide-react';
+import { ArrowLeft, Globe, Map as MapIcon, ChevronDown } from 'lucide-react';
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { fetchGreenTrends } from '@/lib/api';
 import CanodeskMap from '@/components/CanodeskMap';
-
-const CesiumMap = lazy(() => import('@/components/CesiumMap'));
+import { Map as MapboxMap } from 'react-map-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 type NdviLayer = 'ndvi2020' | 'ndvi2024';
 type MapMode   = '2d' | '3d';
 
-// Fix 3 — WebGL detection for Mapbox/Cesium fallback
+// Fix 3 — WebGL detection for Mapbox fallback
 function isWebGLSupported() {
   try {
     const canvas = document.createElement('canvas');
@@ -32,12 +32,23 @@ export default function GreenCover() {
   const [fading,      setFading]      = useState(false);
   const [,            startTransition] = useTransition();
   const [webGL]                        = useState(() => isWebGLSupported());
+  const [showDetails, setShowDetails]  = useState(false); // Mobile collapse state
+  const [overlayOpacity, setOverlayOpacity] = useState(0.65);
 
   const toggleMode = (next: MapMode) => {
     if (next === mapMode) return;
     if (next === '3d' && !webGL) return; // block 3D if no WebGL
     setFading(true);
     setTimeout(() => { startTransition(() => setMapMode(next)); setFading(false); }, 300);
+  };
+
+  const handleYearChange = (newYear: 2020 | 2024) => {
+    if (year === newYear) return;
+    setOverlayOpacity(0);
+    setTimeout(() => {
+      setYear(newYear);
+      setOverlayOpacity(0.65);
+    }, 500); // Wait for transition
   };
 
   useEffect(() => {
@@ -57,14 +68,35 @@ export default function GreenCover() {
   ];
 
   return (
-    <div className="map-page-layout h-screen flex pt-16">
+    <div className="page-transition map-page-container h-screen flex pt-16">
 
       {/* ── Sidebar ─────────────────────────────────────────────────────── */}
-      <div className="map-sidebar w-full lg:w-[340px] shrink-0 bg-card border-r border-border overflow-y-auto p-6 flex flex-col gap-5">
+      <div className="map-sidebar bg-card border-r border-border flex flex-col gap-5 relative">
 
         <Link to="/" className="flex items-center gap-1 text-sm text-canodesk-text-muted hover:text-canodesk-green transition-colors">
           <ArrowLeft size={14} /> Home
         </Link>
+
+        {/* ── Fix 2: Year Toggle Mobile Pill (renders absolute on mobile, inline on desktop) ── */}
+        <div className="year-toggle-mobile md:static md:top-auto md:left-auto md:transform-none md:z-auto md:bg-transparent md:border-none md:shadow-none md:p-0 md:rounded-none">
+          <p className="font-mono text-[10px] text-canodesk-text-muted tracking-wider mb-2 hidden md:block">SELECT YEAR</p>
+          <div className="bg-muted rounded-3xl p-1 flex h-11 w-full md:w-auto">
+            <button
+              onClick={() => handleYearChange(2020)}
+              className={`flex-1 rounded-[20px] font-body font-medium text-sm transition-all duration-300 md:px-4
+                ${year === 2020 ? 'bg-card text-canodesk-green shadow' : 'text-canodesk-text-muted'}`}
+            >
+              🌳 2020
+            </button>
+            <button
+              onClick={() => handleYearChange(2024)}
+              className={`flex-1 rounded-[20px] font-body font-medium text-sm transition-all duration-300 md:px-4
+                ${year === 2024 ? 'bg-card text-canodesk-red shadow' : 'text-canodesk-text-muted'}`}
+            >
+              2024 🔴
+            </button>
+          </div>
+        </div>
 
         <div className="flex items-center gap-3">
           <span className="text-xl">🌿</span>
@@ -74,7 +106,7 @@ export default function GreenCover() {
           </span>
         </div>
 
-        <hr className="border-border" />
+        <hr className="border-border hidden md:block" />
 
         {/* ── 2D / 3D Mode Toggle ──────────────────────────────────────── */}
         <div>
@@ -87,7 +119,7 @@ export default function GreenCover() {
                   ? 'bg-canodesk-green text-white border-canodesk-green shadow-lg shadow-green-500/20'
                   : 'border-border text-canodesk-text-muted hover:border-canodesk-green hover:text-canodesk-green'}`}
             >
-              <Map size={14} /> 2D View
+              <MapIcon size={14} /> 2D View
             </button>
             <button
               onClick={() => toggleMode('3d')}
@@ -107,153 +139,142 @@ export default function GreenCover() {
               ⚠️ WebGL not supported — 3D disabled
             </p>
           )}
-          {mapMode === '3d' && webGL && (
-            <p className="font-body text-[10px] text-canodesk-text-muted mt-2 text-center animate-fadeUp">
-              ✨ Cinematic 3D • Click zones for details
-            </p>
-          )}
         </div>
 
         {/* Hero stat */}
         <div className="text-center py-4 animate-fadeUp">
-          <p className="font-mono text-7xl font-bold text-canodesk-red">
+          <p className="font-mono text-7xl font-bold text-canodesk-red tracking-tight">
             {loading ? '...' : `${greenLoss}%`}
           </p>
-          <p className="font-body text-sm text-canodesk-text-secondary tracking-[2px] mt-1">GREEN COVER LOST</p>
+          <p className="font-body text-sm text-canodesk-text-secondary tracking-[2px] mt-1 font-semibold">GREEN COVER LOST</p>
         </div>
 
-        {/* Year toggle — also switches the map overlay */}
-        <div>
-          <p className="font-mono text-[10px] text-canodesk-text-muted tracking-wider mb-2">SELECT YEAR</p>
-          <div className="bg-muted rounded-3xl p-1 flex h-11">
-            <button
-              onClick={() => setYear(2020)}
-              className={`flex-1 rounded-[20px] font-body font-medium text-sm transition-all duration-300
-                ${year === 2020 ? 'bg-card text-canodesk-green shadow' : 'text-canodesk-text-muted'}`}
-            >
-              🌳 2020
-            </button>
-            <button
-              onClick={() => setYear(2024)}
-              className={`flex-1 rounded-[20px] font-body font-medium text-sm transition-all duration-300
-                ${year === 2024 ? 'bg-card text-canodesk-red shadow' : 'text-canodesk-text-muted'}`}
-            >
-              2024 🔴
-            </button>
+        {/* Mobile Show Details Toggle */}
+        <button 
+          className="md:hidden flex items-center justify-center gap-2 py-2 text-sm text-canodesk-green font-semibold w-full border border-canodesk-green rounded-lg mt-2"
+          onClick={() => setShowDetails(!showDetails)}
+        >
+          {showDetails ? 'Hide Details' : 'Show Details'} 
+          <ChevronDown size={16} className={`transition-transform duration-300 ${showDetails ? 'rotate-180' : ''}`} />
+        </button>
+
+        {/* Collapsible Details Section (Hidden by default on mobile) */}
+        <div className={`transition-all duration-300 overflow-hidden flex flex-col gap-5 ${showDetails ? 'max-h-[800px] opacity-100 mt-2' : 'max-h-0 opacity-0 md:opacity-100 md:max-h-[800px]'}`}>
+          {/* NDVI stats */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center">
+              <p className="font-mono text-4xl font-bold text-canodesk-green">{ndvi2020}</p>
+              <p className="font-body text-xs text-canodesk-text-muted font-medium">NDVI 2020</p>
+            </div>
+            <div className="text-center">
+              <p className="font-mono text-4xl font-bold text-canodesk-orange">{ndvi2024}</p>
+              <p className="font-body text-xs text-canodesk-text-muted font-medium">NDVI 2024</p>
+            </div>
+          </div>
+
+          {/* NDVI position indicator bar */}
+          <div className="relative pt-2">
+            <div className="ndvi-gradient h-3 rounded-md" />
+            <div className="absolute top-2 h-3 flex items-center transition-all duration-500" style={{ left: `${ndvi * 100}%` }}>
+              <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-b-[8px] border-l-transparent border-r-transparent border-b-card -translate-x-1/2 -translate-y-[12px]" />
+            </div>
+            <p className="font-mono text-xs text-center mt-2 text-canodesk-text-muted">
+              {ndvi.toFixed(2)} — {year === 2020 ? 'Dense Vegetation' : 'Moderate Vegetation'}
+            </p>
+          </div>
+
+          <div className="flex justify-center">
+            <span className="canodesk-pill bg-canodesk-orange/10 text-canodesk-orange border border-canodesk-orange/20 text-xs">
+              🔻 VEGETATION DECLINING
+            </span>
+          </div>
+
+          {/* NDVI trend chart */}
+          <div className="bg-canodesk-navy rounded-xl p-4 shadow-inner">
+            <p className="font-mono text-[10px] text-[#94a3b8] mb-2 tracking-wider">NDVI TREND 2020 → 2024</p>
+            <ResponsiveContainer width="100%" height={120}>
+              <AreaChart data={ndviData}>
+                <defs>
+                  <linearGradient id="ndviGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#22c55e" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0}   />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="year" tick={{ fill: '#fff', fontSize: 12 }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ background: '#1e293b', border: '1px solid #22c55e', borderRadius: 8, color: '#22c55e' }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="ndvi"
+                  stroke="#22c55e"
+                  strokeWidth={2}
+                  fill="url(#ndviGrad)"
+                  isAnimationActive
+                  animationDuration={1200}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
-        {/* NDVI stats */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="text-center">
-            <p className="font-mono text-4xl font-bold text-canodesk-green">{ndvi2020}</p>
-            <p className="font-body text-xs text-canodesk-text-muted">NDVI 2020</p>
-          </div>
-          <div className="text-center">
-            <p className="font-mono text-4xl font-bold text-canodesk-orange">{ndvi2024}</p>
-            <p className="font-body text-xs text-canodesk-text-muted">NDVI 2024</p>
-          </div>
-        </div>
-
-        {/* NDVI position indicator bar */}
-        <div className="relative">
-          <div className="ndvi-gradient h-3 rounded-md" />
-          <div className="absolute top-0 h-3 flex items-center" style={{ left: `${ndvi * 100}%` }}>
-            <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-b-[8px] border-l-transparent border-r-transparent border-b-card -translate-x-1/2 -translate-y-full" />
-          </div>
-          <p className="font-mono text-xs text-center mt-1 text-canodesk-text-muted">
-            {ndvi.toFixed(2)} — {year === 2020 ? 'Dense Vegetation' : 'Moderate Vegetation'}
-          </p>
-        </div>
-
-        <span className="canodesk-pill bg-canodesk-orange/10 text-canodesk-orange border border-canodesk-orange/20 text-xs mx-auto">
-          🔻 VEGETATION DECLINING
-        </span>
-
-        {/* NDVI trend chart */}
-        <div className="bg-canodesk-navy rounded-xl p-4">
-          <p className="font-mono text-[10px] text-[#94a3b8] mb-2 tracking-wider">NDVI TREND 2020 → 2024</p>
-          <ResponsiveContainer width="100%" height={120}>
-            <AreaChart data={ndviData}>
-              <defs>
-                <linearGradient id="ndviGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#22c55e" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0}   />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="year" tick={{ fill: '#fff', fontSize: 12 }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ background: '#1e293b', border: '1px solid #22c55e', borderRadius: 8, color: '#22c55e' }}
-              />
-              <Area
-                type="monotone"
-                dataKey="ndvi"
-                stroke="#22c55e"
-                strokeWidth={2}
-                fill="url(#ndviGrad)"
-                isAnimationActive
-                animationDuration={1200}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        <p className="font-body text-[11px] text-canodesk-text-muted mt-auto">
+        <p className="font-body text-[11px] text-canodesk-text-muted mt-auto mb-4 md:mb-0 hidden md:block">
           ESA Sentinel-2 • NDVI Band Analysis • 10m Resolution • Click zone on map for details
         </p>
       </div>
 
       {/* ── Map Container ────────────────────────────────────────────────── */}
-      <div className="map-container flex-1 relative flex flex-col">
+      <div className="map-wrapper transition-opacity duration-600" style={{ opacity: fading ? 0 : 1 }}>
+        {/* 2D Leaflet */}
         <div
-          className="flex-1 relative"
-          style={{ opacity: fading ? 0 : 1, transition: 'opacity 300ms ease' }}
+          className="absolute inset-0"
+          style={{
+            opacity:       mapMode === '2d' ? 1 : 0,
+            pointerEvents: mapMode === '2d' ? 'auto' : 'none',
+            transition:    'opacity 300ms ease',
+            zIndex:        mapMode === '2d' ? 1 : 0,
+          }}
         >
-          {/* 2D Leaflet */}
-          <div
-            className="absolute inset-0"
-            style={{
-              opacity:       mapMode === '2d' ? 1 : 0,
-              pointerEvents: mapMode === '2d' ? 'auto' : 'none',
-              transition:    'opacity 300ms ease',
-              zIndex:        mapMode === '2d' ? 1 : 0,
-            }}
-          >
-            <CanodeskMap activeLayer={activeLayer} />
-          </div>
+          <CanodeskMap activeLayer={activeLayer} overlayOpacity={overlayOpacity} />
+        </div>
 
-          {/* 3D Cesium (only if WebGL supported) */}
+        {/* 3D Mapbox */}
+        <div
+          className="absolute inset-0"
+          style={{
+            opacity:       mapMode === '3d' && webGL ? 1 : 0,
+            pointerEvents: mapMode === '3d' && webGL ? 'auto' : 'none',
+            transition:    'opacity 300ms ease',
+            zIndex:        mapMode === '3d' ? 1 : 0,
+          }}
+        >
           {webGL && (
-            <div
-              className="absolute inset-0"
-              style={{
-                opacity:       mapMode === '3d' ? 1 : 0,
-                pointerEvents: mapMode === '3d' ? 'auto' : 'none',
-                transition:    'opacity 300ms ease',
-                zIndex:        mapMode === '3d' ? 1 : 0,
+            <MapboxMap
+              preserveDrawingBuffer={true}
+              antialias={true}
+              reuseMaps={true}
+              mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN || "pk.dummy"}
+              initialViewState={{
+                longitude: 77.5590,
+                latitude: 12.7621,
+                zoom: 11,
+                pitch: 45,
+                bearing: -15
               }}
-            >
-              <Suspense
-                fallback={
-                  <div className="w-full h-full flex items-center justify-center bg-[#0a1628]">
-                    <div className="text-center">
-                      <div className="w-10 h-10 rounded-full border-4 border-canodesk-green border-t-transparent animate-spin mx-auto mb-3" />
-                      <p className="font-mono text-xs text-canodesk-green tracking-wider">LOADING 3D ENGINE...</p>
-                    </div>
-                  </div>
-                }
-              >
-                <CesiumMap activeLayer={activeLayer} />
-              </Suspense>
-            </div>
+              style={{ width: '100%', height: '100%' }}
+              mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
+              onLoad={(e) => {
+                setTimeout(() => e.target.resize(), 200);
+              }}
+            />
           )}
         </div>
 
         {/* Footer strip */}
-        <div className="bg-card/90 backdrop-blur-sm h-8 flex items-center px-4 text-[11px] font-body text-canodesk-text-muted border-t border-border z-30 shrink-0">
+        <div className="absolute bottom-0 w-full bg-card/90 backdrop-blur-sm h-8 flex items-center px-4 text-[11px] font-body text-canodesk-text-muted border-t border-border z-30 shrink-0">
           {mapMode === '2d'
             ? `🌿 NDVI overlay: ESA Sentinel-2 | Showing: ${year === 2020 ? '2020 baseline' : '2024 current'}`
-            : '🌍 3D Mode: Cesium World Terrain | NDVI overlay | Click zones for popup'}
+            : '🌍 3D Mode: Mapbox Satellite | Click zones for popup'}
         </div>
       </div>
     </div>

@@ -24,7 +24,7 @@ export default function Alerts() {
   };
 
   return (
-    <div className="min-h-screen pt-16">
+    <div className="page-transition min-h-screen pt-16">
       {/* Hero bar */}
       <div className="canodesk-hero-gradient px-8 lg:px-20 py-10">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between">

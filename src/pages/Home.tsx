@@ -249,7 +249,7 @@ function LiveAlertPreview() {
 /* Main Home page */
 export default function Home() {
   return (
-    <div>
+    <div className="page-transition">
       <HeroSection />
       <Ticker />
       <StatsStrip />

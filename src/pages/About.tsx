@@ -63,7 +63,7 @@ function StudyAreaMap() {
 
 export default function About() {
   return (
-    <div className="min-h-screen pt-16">
+    <div className="page-transition min-h-screen pt-16">
       {/* Hero */}
       <section className="canodesk-hero-gradient py-24 px-8 relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">

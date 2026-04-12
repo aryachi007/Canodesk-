@@ -1,16 +1,15 @@
-import { lazy, Suspense, useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUp, ArrowLeft, Globe, Map } from 'lucide-react';
+import { ArrowUp, ArrowLeft, Globe, Map as MapIcon, ChevronDown } from 'lucide-react';
 import { fetchRecommendations, type Recommendation } from '@/lib/api';
 import CanodeskMap from '@/components/CanodeskMap';
-
-// Lazy-load Cesium to keep initial bundle small
-const CesiumMap = lazy(() => import('@/components/CesiumMap'));
+import { Map as MapboxMap } from 'react-map-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 type HeatLayer  = 'heat2020' | 'heat2024';
 type MapMode    = '2d' | '3d';
 
-// Fix 3 — WebGL detection for Mapbox/Cesium fallback
+// Fix 3 — WebGL detection for Mapbox fallback
 function isWebGLSupported() {
   try {
     const canvas = document.createElement('canvas');
@@ -29,6 +28,8 @@ export default function HeatMap() {
   const [fading,    setFading]    = useState(false);
   const [,          startTransition] = useTransition();
   const [webGL]                     = useState(() => isWebGLSupported());
+  const [showDetails, setShowDetails] = useState(false); // Mobile collapse state
+  const [overlayOpacity, setOverlayOpacity] = useState(0.65); // For smooth layer transition
 
   useEffect(() => { fetchRecommendations().then(setRec); }, []);
 
@@ -43,11 +44,20 @@ export default function HeatMap() {
     }, 300);
   };
 
+  const handleLayerChange = (newLayer: HeatLayer) => {
+    if (layer === newLayer) return;
+    setOverlayOpacity(0);
+    setTimeout(() => {
+      setLayer(newLayer);
+      setOverlayOpacity(0.65);
+    }, 300);
+  };
+
   return (
-    <div className="map-page-layout h-screen flex pt-16">
+    <div className="page-transition map-page-container h-screen flex pt-16">
 
       {/* ── Sidebar ─────────────────────────────────────────────────────── */}
-      <div className="map-sidebar w-full lg:w-[340px] shrink-0 bg-card border-r border-border overflow-y-auto p-6 flex flex-col gap-5">
+      <div className="map-sidebar bg-card border-r border-border flex flex-col gap-5">
 
         <Link to="/" className="flex items-center gap-1 text-sm text-canodesk-text-muted hover:text-canodesk-green transition-colors">
           <ArrowLeft size={14} /> Home
@@ -74,7 +84,7 @@ export default function HeatMap() {
                   ? 'bg-canodesk-green text-white border-canodesk-green shadow-lg shadow-green-500/20'
                   : 'border-border text-canodesk-text-muted hover:border-canodesk-green hover:text-canodesk-green'}`}
             >
-              <Map size={14} /> 2D View
+              <MapIcon size={14} /> 2D View
             </button>
             <button
               onClick={() => toggleMode('3d')}
@@ -106,14 +116,14 @@ export default function HeatMap() {
           <p className="font-mono text-[10px] text-canodesk-text-muted tracking-wider mb-2">SELECT YEAR</p>
           <div className="bg-muted rounded-3xl p-1 flex h-11">
             <button
-              onClick={() => setLayer('heat2020')}
+              onClick={() => handleLayerChange('heat2020')}
               className={`flex-1 rounded-[20px] font-body font-medium text-sm transition-all duration-300
                 ${layer === 'heat2020' ? 'bg-card text-canodesk-green shadow' : 'text-canodesk-text-muted'}`}
             >
               🌡️ 2020
             </button>
             <button
-              onClick={() => setLayer('heat2024')}
+              onClick={() => handleLayerChange('heat2024')}
               className={`flex-1 rounded-[20px] font-body font-medium text-sm transition-all duration-300
                 ${layer === 'heat2024' ? 'bg-card text-canodesk-red shadow' : 'text-canodesk-text-muted'}`}
             >
@@ -156,9 +166,20 @@ export default function HeatMap() {
           </div>
         </div>
 
+        {/* Mobile Show Details Toggle */}
+        <button 
+          className="md:hidden flex items-center justify-center gap-2 py-2 text-sm text-canodesk-green font-semibold w-full border border-canodesk-green rounded-lg"
+          onClick={() => setShowDetails(!showDetails)}
+        >
+          {showDetails ? 'Hide Details' : 'Show Details'} 
+          <ChevronDown size={16} className={`transition-transform duration-300 ${showDetails ? 'rotate-180' : ''}`} />
+        </button>
+
         {/* Recommendation panel */}
         {rec && (
-          <div className="bg-canodesk-green-light border border-[#bbf7d0] rounded-xl p-4">
+          <div 
+            className={`bg-canodesk-green-light border border-[#bbf7d0] rounded-xl p-4 overflow-hidden transition-all duration-300 md:max-h-[500px] ${showDetails ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0 md:opacity-100 p-0 md:p-4 border-0 md:border'}`}
+          >
             <p className="font-body text-sm font-bold text-[#15803d] mb-2">🌱 Tree Planting Recommendation</p>
             <p className="font-body text-sm text-canodesk-text-secondary mb-3">{rec.suggestion}</p>
             <p className="font-mono text-sm font-bold text-canodesk-green">Recommended: {rec.trees} trees</p>
@@ -168,7 +189,7 @@ export default function HeatMap() {
           </div>
         )}
 
-        <p className="font-body text-[11px] text-canodesk-text-muted mt-auto">
+        <p className="font-body text-[11px] text-canodesk-text-muted mt-auto mb-4 md:mb-0 hidden md:block">
           {mapMode === '2d'
             ? 'NASA Landsat 8 • Thermal Band ST_B10 • 30m • Click zone for details'
             : 'Cesium World Terrain • NASA Landsat 8 • Click zone for 3D data'}
@@ -176,59 +197,59 @@ export default function HeatMap() {
       </div>
 
       {/* ── Map Container with fade transition ──────────────────────────── */}
-      <div className="map-container flex-1 relative flex flex-col">
+      <div className="map-wrapper transition-opacity duration-600" style={{ opacity: fading ? 0 : 1 }}>
+        {/* 2D Leaflet map */}
         <div
-          className="flex-1 relative"
+          className="absolute inset-0"
           style={{
-            opacity:    fading ? 0 : 1,
+            opacity:    mapMode === '2d' ? 1 : 0,
+            pointerEvents: mapMode === '2d' ? 'auto' : 'none',
             transition: 'opacity 300ms ease',
+            zIndex:     mapMode === '2d' ? 1 : 0,
           }}
         >
-          {/* 2D Leaflet map */}
-          <div
-            className="absolute inset-0"
-            style={{
-              opacity:    mapMode === '2d' ? 1 : 0,
-              pointerEvents: mapMode === '2d' ? 'auto' : 'none',
-              transition: 'opacity 300ms ease',
-              zIndex:     mapMode === '2d' ? 1 : 0,
-            }}
-          >
-            <CanodeskMap activeLayer={layer} />
-          </div>
-
-          {/* 3D Cesium map (only if WebGL supported) */}
-          {webGL && (
-            <div
-              className="absolute inset-0"
-              style={{
-                opacity:    mapMode === '3d' ? 1 : 0,
-                pointerEvents: mapMode === '3d' ? 'auto' : 'none',
-                transition: 'opacity 300ms ease',
-                zIndex:     mapMode === '3d' ? 1 : 0,
-              }}
-            >
-              <Suspense
-                fallback={
-                  <div className="w-full h-full flex items-center justify-center bg-[#0a1628]">
-                    <div className="text-center">
-                      <div className="w-10 h-10 rounded-full border-4 border-canodesk-green border-t-transparent animate-spin mx-auto mb-3" />
-                      <p className="font-mono text-xs text-canodesk-green tracking-wider">LOADING 3D ENGINE...</p>
-                    </div>
-                  </div>
-                }
-              >
-                <CesiumMap activeLayer={layer} />
-              </Suspense>
-            </div>
-          )}
+          <CanodeskMap activeLayer={layer} overlayOpacity={overlayOpacity} />
         </div>
 
+        {/* 3D Mapbox map */}
+        <div
+          className="absolute inset-0"
+          style={{
+            opacity:       mapMode === '3d' && webGL ? 1 : 0,
+            pointerEvents: mapMode === '3d' && webGL ? 'auto' : 'none',
+            transition:    'opacity 300ms ease',
+            zIndex:        mapMode === '3d' && webGL ? 1 : 0,
+          }}
+        >
+          {webGL && (
+            <MapboxMap
+              preserveDrawingBuffer={true}
+              antialias={true}
+              reuseMaps={true}
+              mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN || "pk.eyJ1IjoiZHVtbXkiLCJhIjoiYmFyY2hhIn0.xxx"}
+              initialViewState={{
+                longitude: 77.5590,
+                latitude: 12.7621,
+                zoom: 11,
+                pitch: 45,
+                bearing: -15
+              }}
+              style={{ width: '100%', height: '100%' }}
+              mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
+              onLoad={(e) => {
+                setTimeout(() => {
+                  e.target.resize();
+                }, 200);
+              }}
+            />
+          )}
+        </div>
+        
         {/* Footer strip */}
-        <div className="bg-card/90 backdrop-blur-sm h-8 flex items-center px-4 text-[11px] font-body text-canodesk-text-muted border-t border-border z-30 shrink-0">
+        <div className="absolute bottom-0 w-full bg-card/90 backdrop-blur-sm h-8 flex items-center px-4 text-[11px] font-body text-canodesk-text-muted border-t border-border z-30 shrink-0">
           {mapMode === '2d'
-            ? '🗺️ 2D Mode: ESRI Satellite | NASA Landsat 8 thermal | GeoJSON zones'
-            : '🌍 3D Mode: Cesium World Terrain | NASA Landsat 8 thermal | Click zones for popup'}
+            ? '🗺️ 2D Mode: CartoDB Voyager | NASA Landsat 8 thermal | GeoJSON zones'
+            : '🌍 3D Mode: Mapbox Satellite | Click zones for popup'}
         </div>
       </div>
     </div>
