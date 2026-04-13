@@ -1,13 +1,10 @@
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUp, ArrowLeft, Globe, Map as MapIcon } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { fetchRecommendations, type Recommendation } from '@/lib/api';
 import CanodeskMap from '@/components/CanodeskMap';
-import { Map as MapboxMap, Source, Layer, Marker } from 'react-map-gl';
+import { Map as MapboxMap, Source, Layer, Marker, NavigationControl, MapRef } from 'react-map-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-
-type HeatLayer  = 'heat2020' | 'heat2024';
-type MapMode    = '2d' | '3d';
 
 const bannerghattaPolygon = {
   type: 'FeatureCollection',
@@ -30,7 +27,6 @@ const bannerghattaPolygon = {
   ]
 };
 
-// WebGL detection for Mapbox fallback
 function isWebGLSupported() {
   try {
     const canvas = document.createElement('canvas');
@@ -42,255 +38,192 @@ function isWebGLSupported() {
 }
 
 export default function HeatMap() {
-  const [rec,       setRec]       = useState<Recommendation | null>(null);
-  const [layer,     setLayer]     = useState<HeatLayer>('heat2024');
-  const [mapMode,   setMapMode]   = useState<MapMode>('2d');
-  const [fading,    setFading]    = useState(false);
-  const [,          startTransition] = useTransition();
-  const [webGL]                     = useState(() => isWebGLSupported());
-  const [overlayOpacity, setOverlayOpacity] = useState(0.65);
+  const [rec, setRec] = useState<Recommendation | null>(null);
+  const [is3D, setIs3D] = useState(true);
+  const [webGL] = useState(() => isWebGLSupported());
+  const mapRef = useRef<MapRef>(null);
 
-  useEffect(() => { fetchRecommendations().then(setRec); }, []);
+  useEffect(() => {
+    fetchRecommendations().then(setRec);
+  }, []);
 
-  const toggleMode = (next: MapMode) => {
-    if (next === mapMode) return;
-    if (next === '3d' && !webGL) return;
-    setFading(true);
-    setTimeout(() => {
-      startTransition(() => setMapMode(next));
-      setFading(false);
-    }, 300);
-  };
-
-  const handleLayerChange = (newLayer: HeatLayer) => {
-    if (layer === newLayer) return;
-    setOverlayOpacity(0);
-    setTimeout(() => {
-      setLayer(newLayer);
-      setOverlayOpacity(0.65);
-    }, 300);
-  };
+  useEffect(() => {
+    if (mapRef.current) {
+      mapRef.current.easeTo({
+        pitch: is3D ? 45 : 0,
+        bearing: is3D ? -15 : 0,
+        duration: 800
+      });
+    }
+  }, [is3D]);
 
   return (
-    <div className="page-transition map-page-container h-screen flex pt-16">
-
-      {/* ── Sidebar ─────────────────────────────────────────────────────── */}
-      <div className="map-sidebar bg-card border-r border-border flex flex-col gap-5">
-        <Link to="/" className="flex items-center gap-1 text-sm text-canodesk-text-muted hover:text-canodesk-green transition-colors">
-          <ArrowLeft size={14} /> Home
+    <div className="heatmap-layout page-transition pt-16 flex h-screen overflow-hidden">
+      
+      {/* LEFT SIDEBAR */}
+      <div className="heatmap-sidebar bg-card border-r border-border flex flex-col gap-5 p-4 relative z-10 shadow-xl w-[340px] shrink-0">
+        <Link to="/" className="flex items-center gap-1 text-xs text-slate-400 hover:text-green-500 transition-colors">
+          <ArrowLeft size={14} /> Home / Heat Map
         </Link>
 
+        {/* Header */}
         <div className="flex items-center gap-3">
-          <span className="text-xl">🌡️</span>
-          <h1 className="font-heading text-xl font-bold text-canodesk-navy">Thermal Analysis</h1>
-          <span className="canodesk-pill canodesk-pill-green text-[10px] ml-auto">
-            <span className="w-1.5 h-1.5 rounded-full bg-canodesk-green animate-pulse-dot" /> LIVE
+          <h1 className="font-heading text-[22px] font-bold text-slate-800 m-0 leading-tight flex items-center gap-2">
+            🌡️ Thermal Analysis
+          </h1>
+          <span className="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 border border-green-200 text-green-700 text-[10px] font-bold tracking-wider">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> LIVE
           </span>
         </div>
 
-        <hr className="border-border" />
+        <hr className="border-border opacity-60" />
 
-        {/* ── 2D / 3D Mode Toggle ──────────────────────────────────────── */}
-        <div>
-          <p className="font-mono text-[10px] text-canodesk-text-muted tracking-wider mb-2">MAP MODE</p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => toggleMode('2d')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-body font-semibold text-sm border transition-all duration-300
-                ${mapMode === '2d' ? 'bg-canodesk-green text-white border-canodesk-green shadow-lg shadow-green-500/20' : 'border-border text-canodesk-text-muted hover:border-canodesk-green hover:text-canodesk-green'}`}
-            >
-              <MapIcon size={14} /> 2D View
-            </button>
-            <button
-              onClick={() => toggleMode('3d')}
-              disabled={!webGL}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-body font-semibold text-sm border transition-all duration-300
-                ${!webGL ? 'opacity-40 cursor-not-allowed border-border text-canodesk-text-muted' : mapMode === '3d' ? 'bg-canodesk-navy text-white border-canodesk-navy shadow-lg' : 'border-border text-canodesk-text-muted hover:border-canodesk-navy hover:text-canodesk-navy'}`}
-            >
-              <Globe size={14} /> 3D View
-            </button>
-          </div>
-          {!webGL && (
-            <p className="font-body text-[10px] text-canodesk-text-muted mt-2 text-center">
-              ⚠️ WebGL not supported — 3D disabled
-            </p>
-          )}
-          {mapMode === '3d' && webGL && (
-            <p className="font-body text-[10px] text-canodesk-text-muted mt-2 text-center animate-fadeUp">
-              ✨ Cinematic 3D • Click zones for details
-            </p>
-          )}
-        </div>
-
-        {/* ── Heat Layer Toggle ─────────────────────────────────────────── */}
-        <div>
-          <p className="font-mono text-[10px] text-canodesk-text-muted tracking-wider mb-2">SELECT YEAR</p>
-          <div className="bg-muted rounded-3xl p-1 flex h-11">
-            <button
-              onClick={() => handleLayerChange('heat2020')}
-              className={`flex-1 rounded-[20px] font-body font-medium text-sm transition-all duration-300
-                ${layer === 'heat2020' ? 'bg-card text-canodesk-green shadow' : 'text-canodesk-text-muted'}`}
-            >
-              🌡️ 2020
-            </button>
-            <button
-              onClick={() => handleLayerChange('heat2024')}
-              className={`flex-1 rounded-[20px] font-body font-medium text-sm transition-all duration-300
-                ${layer === 'heat2024' ? 'bg-card text-canodesk-red shadow' : 'text-canodesk-text-muted'}`}
-            >
-              2024 🔴
-            </button>
-          </div>
-        </div>
-
-        {/* Zone data card */}
-        <div className="canodesk-card border-l-4 border-l-canodesk-red p-5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-mono text-xs font-bold text-canodesk-navy tracking-[1.5px]">BANNERGHATTA</span>
-            <span className="canodesk-pill canodesk-pill-red text-[10px]">
-              <span className="w-1.5 h-1.5 rounded-full bg-canodesk-red animate-pulse-red" /> CRITICAL
+        {/* Zone card */}
+        <div className="border border-border rounded-xl p-5 border-l-4 border-l-red-500 bg-white shadow-sm relative overflow-hidden">
+          <div className="flex items-center justify-between mb-4">
+            <span className="font-mono text-sm font-bold text-slate-800 tracking-[1px]">BANNERGHATTA</span>
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded border border-red-200 bg-red-50 text-red-600 text-[10px] font-bold tracking-wider uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse-red" /> CRITICAL
             </span>
           </div>
-          <p className="font-mono text-6xl font-bold text-canodesk-red leading-none mb-4">
-            {layer === 'heat2024' ? '38.5' : '35.0'}°C
+
+          <div className="mb-4">
+            <span className="font-mono text-[64px] font-bold text-red-600 leading-none">45°C</span>
+          </div>
+
+          <div className="w-full bg-slate-100 rounded-full h-2.5 mb-3 overflow-hidden">
+            <div className="bg-red-500 h-full rounded-full transition-all duration-1000 w-[90%]" />
+          </div>
+
+          <div className="flex items-center justify-between font-mono text-xs">
+            <span className="text-slate-500">2020: 41°C</span>
+            <span className="text-red-500 font-bold">2024: 45°C</span>
+          </div>
+          <div className="mt-2 text-right">
+            <span className="font-mono font-bold text-red-600 text-sm tracking-wide">+4°C ↑</span>
+          </div>
+        </div>
+
+        <hr className="border-border opacity-60" />
+
+        {/* Recommendation card */}
+        <div className="bg-green-50 border border-green-100 rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-lg">🌴</span>
+            <span className="font-body text-sm font-bold text-green-800">Tree Planting Recommendation</span>
+          </div>
+          <p className="font-body text-sm text-slate-600 mb-4 leading-relaxed">
+            {rec?.suggestion || "Strategic afforestation in priority heat pockets to reduce surface temperatures."}
           </p>
-          <div className="w-full bg-muted rounded h-2 mb-2">
-            <div className="bg-canodesk-red h-2 rounded transition-all duration-700"
-              style={{ width: layer === 'heat2024' ? '90%' : '75%' }} />
+          <div className="mb-1">
+            <span className="font-body font-bold text-green-700 text-sm">{rec?.trees || 500} trees recommended</span>
           </div>
-          <p className="font-mono text-[10px] text-canodesk-text-muted mb-3">SURFACE TEMPERATURE (°C)</p>
-          <div className="flex justify-between text-sm">
-            <span className="font-body text-canodesk-text-muted">2020: 35.0°C</span>
-            <span className="font-mono font-bold text-canodesk-red flex items-center gap-1">
-              2024: 38.5°C <ArrowUp size={14} />
-            </span>
-          </div>
-          <p className="font-mono text-sm font-bold text-canodesk-red mt-2">+3.5°C ↑</p>
-        </div>
-
-        {/* Heat scale legend */}
-        <div>
-          <p className="font-mono text-[10px] text-canodesk-text-muted tracking-wider mb-2">HEAT SCALE</p>
-          <div className="heat-gradient h-3 rounded-lg mb-1" />
-          <div className="flex justify-between font-mono text-[10px] text-canodesk-text-muted">
-            <span>25°C</span><span>35°C</span><span>45°C</span>
+          <div className="text-xs text-slate-500 font-body">
+            Species: {rec?.species?.join(', ') || 'Neem, Peepal, Rain Tree'}
           </div>
         </div>
 
-        {/* Recommendation panel */}
-        {rec && (
-          <div className="bg-canodesk-green-light border border-[#bbf7d0] rounded-xl p-4">
-            <p className="font-body text-sm font-bold text-[#15803d] mb-2">🌱 Tree Planting Recommendation</p>
-            <p className="font-body text-sm text-canodesk-text-secondary mb-3">{rec.suggestion}</p>
-            <p className="font-mono text-sm font-bold text-canodesk-green">Recommended: {rec.trees} trees</p>
-            <p className="font-body text-xs text-canodesk-text-muted mt-1">
-              Species: {rec.species?.join(', ') ?? 'Neem, Peepal, Rain Tree'}
-            </p>
-          </div>
-        )}
+        <hr className="border-border opacity-60 mt-auto" />
 
-        <p className="font-body text-[11px] text-canodesk-text-muted mt-auto mb-4 md:mb-0 hidden md:block">
-          {mapMode === '2d'
-            ? 'NASA Landsat 8 • Thermal Band ST_B10 • 30m • Click zone for details'
-            : 'Cesium World Terrain • NASA Landsat 8 • Click zone for 3D data'}
-        </p>
+        {/* Footer info & Toggle */}
+        <div className="flex flex-col gap-4 mt-2">
+          <span className="text-[11px] text-slate-400 font-body">NASA Landsat 8 Collection 2 • 30m Resolution</span>
+          
+          <button
+            onClick={() => setIs3D(!is3D)}
+            className="flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#0f172a] text-[#00ff88] font-mono text-sm font-bold shadow-lg hover:shadow-[0_0_15px_rgba(0,255,136,0.3)] transition-all duration-300 w-full"
+          >
+            <span>{is3D ? "⬡ 2D View" : "⬡ 3D View"}</span>
+          </button>
+        </div>
+
       </div>
 
-      {/* ── Map Container with fade transition ──────────────────────────── */}
-      <div className="map-wrapper transition-opacity duration-600" style={{ opacity: fading ? 0 : 1 }}>
-        {/* 2D Leaflet map */}
-        <div
-          className="absolute inset-0"
-          style={{
-            opacity:    mapMode === '2d' ? 1 : 0,
-            pointerEvents: mapMode === '2d' ? 'auto' : 'none',
-            transition: 'opacity 300ms ease',
-            zIndex:     mapMode === '2d' ? 1 : 0,
-          }}
-        >
-          <CanodeskMap activeLayer={layer} overlayOpacity={overlayOpacity} />
-        </div>
+      {/* RIGHT MAP */}
+      <div className="heatmap-map flex-1 relative bg-[#0a1628] w-full min-h-0">
+        {!webGL ? (
+          <CanodeskMap activeLayer="heat2024" overlayOpacity={0.65} />
+        ) : (
+          <MapboxMap
+            ref={mapRef}
+            preserveDrawingBuffer={true}
+            mapboxAccessToken={"pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpej" + "Y4M29iazA2Z2gycXA4N2pmbDZmangifQ.-g_vE53SD2WrJ6tFX7QHmA"}
+            mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
+            initialViewState={{
+              longitude: 77.5590,
+              latitude: 12.7621,
+              zoom: 7,
+              pitch: 0,
+              bearing: 0
+            }}
+            style={{ width: '100%', height: '100%' }}
+            onLoad={(e) => {
+              const map = e.target;
+              setTimeout(() => map.resize(), 200);
+              map.flyTo({
+                zoom: 11,
+                pitch: 45,
+                bearing: -15,
+                duration: 2500,
+                essential: true
+              });
+            }}
+            terrain={{ source: 'mapbox-dem', exaggeration: 1.5 }}
+          >
+            <Source
+              id="mapbox-dem"
+              type="raster-dem"
+              url="mapbox://mapbox.mapbox-terrain-dem-v1"
+              tileSize={512}
+              maxzoom={14}
+            />
 
-        {/* 3D Mapbox map */}
-        <div
-          className="absolute inset-0 bg-[#0a1628]"
-          style={{
-            opacity:       mapMode === '3d' && webGL ? 1 : 0,
-            pointerEvents: mapMode === '3d' && webGL ? 'auto' : 'none',
-            transition:    'opacity 300ms ease',
-            zIndex:        mapMode === '3d' && webGL ? 1 : 0,
-          }}
-        >
-          {webGL && (
-            <MapboxMap
-              preserveDrawingBuffer={true}
-              antialias={true}
-              reuseMaps={true}
-              mapboxAccessToken={"pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpej" + "Y4M29iazA2Z2gycXA4N2pmbDZmangifQ.-g_vE53SD2WrJ6tFX7QHmA"}
-              initialViewState={{
-                longitude: 77.5590,
-                latitude: 12.7621,
-                zoom: 7,
-                pitch: 0,
-                bearing: 0
-              }}
-              style={{ width: '100%', height: '100%', position: 'relative' }}
-              mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
-              terrain={{ source: 'mapbox-dem', exaggeration: 1.5 }}
-              onLoad={(e) => {
-                const map = e.target;
-                setTimeout(() => map.resize(), 200);
-                map.flyTo({
-                  zoom: 11,
-                  pitch: 45,
-                  bearing: -15,
-                  duration: 2500,
-                  essential: true
-                });
-              }}
-            >
-              <Source
-                id="mapbox-dem"
-                type="raster-dem"
-                url="mapbox://mapbox.mapbox-terrain-dem-v1"
-                tileSize={512}
-                maxzoom={14}
+            <Source id="bannerghattaPolygon" type="geojson" data={bannerghattaPolygon as any}>
+              <Layer
+                id="bannerghatta-fill"
+                type="fill"
+                paint={{
+                  'fill-color': '#dc2626',
+                  'fill-opacity': 0.25
+                }}
               />
-              <Source id="bannerghattaPolygon" type="geojson" data={bannerghattaPolygon as any}>
-                <Layer
-                  id="bannerghatta-fill"
-                  type="fill"
-                  paint={{
-                    'fill-color': '#e11d48', // Tailwind rose-600 logic, or red based on request
-                    'fill-opacity': 0.15
-                  }}
-                />
-                <Layer
-                  id="bannerghatta-line"
-                  type="line"
-                  paint={{
-                    'line-color': '#e11d48',
-                    'line-width': 2
-                  }}
-                />
-              </Source>
-              <Marker longitude={77.5590} latitude={12.7621} anchor="center">
-                <div className="relative flex justify-center items-center">
-                  <div className="absolute w-4 h-4 bg-red-500 rounded-full animate-ping opacity-75" />
-                  <div className="relative w-2 h-2 bg-red-600 rounded-full border border-white" />
+              <Layer
+                id="bannerghatta-line"
+                type="line"
+                paint={{
+                  'line-color': '#dc2626',
+                  'line-width': 2
+                }}
+              />
+            </Source>
+
+            <Marker longitude={77.5590} latitude={12.7621} anchor="center">
+              <div className="relative flex justify-center items-center cursor-pointer group">
+                <div className="absolute w-8 h-8 bg-red-500 rounded-full animate-ripple opacity-75" />
+                <div className="relative w-4 h-4 bg-red-600 rounded-full border-[3px] border-white shadow-[0_0_15px_rgba(220,38,38,0.8)]" />
+                
+                {/* Custom tooltip shown on hover since user asked for "Dark glassmorphism popup showing zone details" */}
+                <div className="absolute bottom-full mb-3 hidden group-hover:block w-48 bg-[#0f172a]/95 backdrop-blur-sm border border-[#00ff88]/30 rounded-xl p-3 shadow-xl z-50 text-white pointer-events-none">
+                  <p className="font-mono text-[10px] text-[#00ff88] mb-1">DATA LAYER</p>
+                  <p className="font-body text-sm font-bold mb-2">Bannerghatta Heat Core</p>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-400">Temp</span>
+                    <span className="font-mono font-bold text-red-400">45°C</span>
+                  </div>
                 </div>
-              </Marker>
-            </MapboxMap>
-          )}
-        </div>
+              </div>
+            </Marker>
+            
+            <NavigationControl position="top-right" />
+          </MapboxMap>
+        )}
         
-        {/* Footer strip */}
-        <div className="absolute bottom-0 w-full bg-card/90 backdrop-blur-sm h-8 flex items-center px-4 text-[11px] font-body text-canodesk-text-muted border-t border-border z-30 shrink-0">
-          {mapMode === '2d'
-            ? '🗺️ 2D Mode: CartoDB Voyager | NASA Landsat 8 thermal | GeoJSON zones'
-            : '🌍 3D Mode: Mapbox Satellite | Terrain Analysis Enabled | Click zones for popup'}
+        {/* Bottom info strip */}
+        <div className="absolute bottom-0 w-full bg-[#0a1628]/80 backdrop-blur-md h-[28px] flex items-center px-4 text-[10px] font-body text-slate-400 border-t border-[#1e293b] z-30 pointer-events-none">
+          🛰️ Satellite imagery: Mapbox/Maxar • NASA Landsat 8 • Terrain: Mapbox DEM
         </div>
       </div>
+      
     </div>
   );
 }

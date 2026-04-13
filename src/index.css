@@ -381,3 +381,28 @@ body {
 .page-transition {
   animation: pageEnter 0.4s ease forwards;
 }
+
+@media (max-width: 768px) {
+  .heatmap-layout {
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+  }
+  .heatmap-sidebar {
+    width: 100%;
+    max-height: 35vh;
+    overflow-y: auto;
+    flex-shrink: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  .heatmap-map {
+    flex: 1;
+    min-height: 0;
+    height: 65vh;
+    width: 100%;
+  }
+  .mapboxgl-canvas {
+    width: 100% !important;
+    height: 100% !important;
+  }
+}
