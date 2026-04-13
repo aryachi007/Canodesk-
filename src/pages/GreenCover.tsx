@@ -70,10 +70,6 @@ export default function GreenCover() {
   useEffect(() => {
     if (is3D && containerRef.current && !viewerRef.current) {
       const viewer = new Cesium.Viewer(containerRef.current, {
-        terrainProvider: Cesium.createWorldTerrain(),
-        imageryProvider: new Cesium.IonWorldImageryStyle({
-          style: Cesium.IonWorldImageryStyle.AERIAL_WITH_LABELS
-        }),
         baseLayerPicker: false,
         navigationHelpButton: false,
         animation: false,
