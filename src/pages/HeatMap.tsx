@@ -47,21 +47,21 @@ export default function HeatMap() {
     fetchRecommendations().then(setRec);
   }, []);
 
+  // Force resize on map load
   useEffect(() => {
     if (mapRef.current) {
-      mapRef.current.easeTo({
-        pitch: is3D ? 45 : 0,
-        bearing: is3D ? -15 : 0,
-        duration: 800
+      const map = mapRef.current.getMap();
+      map.on('load', () => {
+        setTimeout(() => map.resize(), 200);
       });
     }
-  }, [is3D]);
+  }, []);
 
   return (
-    <div className="heatmap-layout page-transition pt-16 flex h-screen overflow-hidden">
+    <div className="map-page-container page-transition pt-16 flex md:flex-row flex-col h-[100dvh] overflow-hidden">
       
       {/* LEFT SIDEBAR */}
-      <div className="heatmap-sidebar bg-card border-r border-border flex flex-col gap-5 p-4 relative z-10 shadow-xl w-[340px] shrink-0">
+      <div className="map-sidebar bg-card border-r border-border flex flex-col gap-5 p-4 relative z-10 shadow-xl md:w-[340px] w-full shrink-0">
         <Link to="/" className="flex items-center gap-1 text-xs text-slate-400 hover:text-green-500 transition-colors">
           <ArrowLeft size={14} /> Home / Heat Map
         </Link>
@@ -125,29 +125,41 @@ export default function HeatMap() {
 
         <hr className="border-border opacity-60 mt-auto" />
 
-        {/* Footer info & Toggle */}
+        {/* Footer info */}
         <div className="flex flex-col gap-4 mt-2">
           <span className="text-[11px] text-slate-400 font-body">NASA Landsat 8 Collection 2 • 30m Resolution</span>
-          
-          <button
-            onClick={() => setIs3D(!is3D)}
-            className="flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#0f172a] text-[#00ff88] font-mono text-sm font-bold shadow-lg hover:shadow-[0_0_15px_rgba(0,255,136,0.3)] transition-all duration-300 w-full"
-          >
-            <span>{is3D ? "⬡ 2D View" : "⬡ 3D View"}</span>
-          </button>
         </div>
 
       </div>
 
       {/* RIGHT MAP */}
-      <div className="heatmap-map flex-1 relative bg-[#0a1628] w-full min-h-0">
+      <div className="map-wrapper flex-1 relative bg-[#0a1628] w-full min-h-0">
+        
+        {/* Toggle button in the map header */}
+        <button
+          onClick={() => {
+            setIs3D(!is3D);
+            if(mapRef.current) {
+              const map = mapRef.current.getMap();
+              map.easeTo({
+                pitch: is3D ? 0 : 45,
+                bearing: is3D ? 0 : -15,
+                duration: 1000
+              });
+            }
+          }}
+          className="absolute top-4 right-14 z-[999] flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur border border-white/20 text-white text-sm font-medium hover:bg-white/20 transition-all shadow-lg"
+        >
+          {is3D ? '2D' : '3D'} View
+        </button>
+
         {!webGL ? (
           <CanodeskMap activeLayer="heat2024" overlayOpacity={0.65} />
         ) : (
           <MapboxMap
             ref={mapRef}
             preserveDrawingBuffer={true}
-            mapboxAccessToken={"pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpej" + "Y4M29iazA2Z2gycXA4N2pmbDZmangifQ.-g_vE53SD2WrJ6tFX7QHmA"}
+            mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
             mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
             initialViewState={{
               longitude: 77.5590,
@@ -159,7 +171,6 @@ export default function HeatMap() {
             style={{ width: '100%', height: '100%' }}
             onLoad={(e) => {
               const map = e.target;
-              setTimeout(() => map.resize(), 200);
               map.flyTo({
                 zoom: 11,
                 pitch: 45,
@@ -202,7 +213,6 @@ export default function HeatMap() {
                 <div className="absolute w-8 h-8 bg-red-500 rounded-full animate-ripple opacity-75" />
                 <div className="relative w-4 h-4 bg-red-600 rounded-full border-[3px] border-white shadow-[0_0_15px_rgba(220,38,38,0.8)]" />
                 
-                {/* Custom tooltip shown on hover since user asked for "Dark glassmorphism popup showing zone details" */}
                 <div className="absolute bottom-full mb-3 hidden group-hover:block w-48 bg-[#0f172a]/95 backdrop-blur-sm border border-[#00ff88]/30 rounded-xl p-3 shadow-xl z-50 text-white pointer-events-none">
                   <p className="font-mono text-[10px] text-[#00ff88] mb-1">DATA LAYER</p>
                   <p className="font-body text-sm font-bold mb-2">Bannerghatta Heat Core</p>
@@ -219,7 +229,7 @@ export default function HeatMap() {
         )}
         
         {/* Bottom info strip */}
-        <div className="absolute bottom-0 w-full bg-[#0a1628]/80 backdrop-blur-md h-[28px] flex items-center px-4 text-[10px] font-body text-slate-400 border-t border-[#1e293b] z-30 pointer-events-none">
+        <div className="absolute bottom-0 w-full bg-[#0a1628]/80 backdrop-blur-md h-[28px] flex items-center px-4 text-[10px] font-body text-slate-400 border-t border-[#1e293b] z-[990] pointer-events-none">
           🛰️ Satellite imagery: Mapbox/Maxar • NASA Landsat 8 • Terrain: Mapbox DEM
         </div>
       </div>

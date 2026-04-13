@@ -345,7 +345,7 @@ body {
   }
 
   /* Issue 2: Floating Pill Year Toggle */
-  .year-toggle-mobile {
+  .year-toggle {
     position: fixed;
     top: 68px;
     left: 50%;
