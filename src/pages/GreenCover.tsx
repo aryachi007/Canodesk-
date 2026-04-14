@@ -74,7 +74,14 @@ export default function GreenCover() {
 
     let viewer: Cesium.Viewer;
     try {
+      // @ts-ignore
+      const terrainProvider = Cesium.createWorldTerrain({ requestVertexNormals: true });
+      // @ts-ignore
+      const imageryProvider = new Cesium.IonImageryProvider({ assetId: 2 });
+      
       viewer = new Cesium.Viewer(containerRef.current, {
+        terrainProvider,
+        imageryProvider,
         baseLayerPicker: false,
         navigationHelpButton: false,
         animation: false,
@@ -85,22 +92,17 @@ export default function GreenCover() {
         geocoder: false,
         infoBox: false,
         selectionIndicator: false,
-        shadows: false,
-        shouldAnimate: false,
-        skyBox: false,
-        skyAtmosphere: new Cesium.SkyAtmosphere(),
+        shadows: false
       });
 
       viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#0f172a');
+      // @ts-ignore
+      viewer.scene.globe.terrainExaggeration = 1.5;
 
       // Far initial view
       viewer.camera.setView({
         destination: Cesium.Cartesian3.fromDegrees(77.5590, 12.7621, 80000),
-        orientation: {
-          heading: Cesium.Math.toRadians(0),
-          pitch: Cesium.Math.toRadians(-45),
-          roll: 0
-        }
+        orientation: { heading: 0, pitch: Cesium.Math.toRadians(-45), roll: 0 }
       });
 
       // Fly in
@@ -131,14 +133,13 @@ export default function GreenCover() {
 
       const entity = viewer.entities.add({
         polygon: {
-          hierarchy: new Cesium.PolygonHierarchy(
-            Cesium.Cartesian3.fromDegreesArray(bannerghattaCoords)
-          ),
+          hierarchy: Cesium.Cartesian3.fromDegreesArray(bannerghattaCoords),
           material: initColor.withAlpha(0.3),
           outline: true,
           outlineColor: initColor,
           outlineWidth: 3,
-          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
+          // @ts-ignore
+          clampToGround: true
         }
       });
       polygonEntityRef.current = entity;
@@ -188,20 +189,25 @@ export default function GreenCover() {
 
       {/* ── LEFT SIDEBAR ─────────────────────────────────────────────────── */}
       <div className="map-sidebar shrink-0">
-        <Link to="/" className="flex items-center gap-1 text-xs text-slate-400 hover:text-green-400 transition-colors">
+        <Link to="/" className="flex items-center gap-1 text-xs text-slate-400 hover:text-green-400 transition-colors mb-4">
           <ArrowLeft size={14} /> Home / Green Cover
         </Link>
 
+        {/* Small label */}
+        <div className="text-[10px] text-slate-400 font-bold tracking-widest uppercase mb-1">
+          CANODESK GREEN MONITOR
+        </div>
+
         {/* 16.2% LOST */}
-        <div className="text-center py-1">
+        <div className="text-left py-1 mb-2">
           <p className="font-mono text-5xl font-bold text-red-500 leading-none">
             {greenLoss}%
           </p>
-          <p className="text-xs text-slate-400 tracking-wider mt-1 uppercase">Green Cover Since 2020</p>
+          <p className="text-xs text-slate-400 mt-1">Green Cover Lost Since 2020</p>
         </div>
 
         {/* Year toggle — immediately below stat */}
-        <div className="year-toggle flex bg-slate-800 rounded-full p-1 shadow-inner border border-slate-700">
+        <div className="year-toggle flex bg-slate-800 rounded-full p-1 shadow-inner border border-slate-700 mb-4">
           <button
             onClick={() => setYear(2020)}
             className={`flex-1 rounded-full font-bold text-sm transition-all duration-300 py-2
@@ -219,24 +225,17 @@ export default function GreenCover() {
         </div>
 
         {/* NDVI row */}
-        <div className="flex items-center justify-between">
-          <div className="text-center">
-            <div className="text-[10px] text-slate-400 tracking-wider uppercase mb-1">2020 NDVI</div>
-            <div className="font-mono font-bold text-xl text-green-400">{ndvi2020.toFixed(2)}</div>
-          </div>
-          <div className="text-slate-600">→</div>
-          <div className="text-center">
-            <div className="text-[10px] text-slate-400 tracking-wider uppercase mb-1">2024 NDVI</div>
-            <div className="font-mono font-bold text-xl text-orange-400">{ndvi2024.toFixed(2)}</div>
-          </div>
+        <div className="flex items-center justify-between mb-4">
+          <span className="font-mono text-sm text-slate-300">2020: {ndvi2020.toFixed(2)}</span>
+          <span className="font-mono text-sm text-orange-400">2024: {ndvi2024.toFixed(2)}</span>
         </div>
 
         {/* NDVI health gradient bar */}
-        <div>
-          <div className="h-3 rounded-full bg-gradient-to-r from-red-600 via-yellow-400 to-green-500 border border-slate-700 relative overflow-visible">
+        <div className="mb-4">
+          <div className="h-3 rounded-full bg-gradient-to-r from-green-500 via-yellow-400 to-red-600 border border-slate-700 relative overflow-visible">
             <div
               className="absolute top-1/2 -translate-y-1/2 w-3 h-4 rounded-sm bg-white shadow-lg border border-slate-400 transition-all duration-500"
-              style={{ left: `calc(${(ndvi - 0.5) / 0.5 * 100}% - 6px)` }}
+              style={{ left: `calc(${(1.0 - ndvi) / 0.5 * 100}% - 6px)` }}
             />
           </div>
           <div className="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
@@ -247,9 +246,9 @@ export default function GreenCover() {
         </div>
 
         {/* VEGETATION DECLINING badge */}
-        <div className="flex justify-center">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded border border-orange-500/50 bg-orange-900/30 text-orange-400 text-xs font-bold tracking-wider">
-            🔻 VEGETATION DECLINING
+        <div className="flex mb-4">
+          <span className="inline-flex items-center px-3 py-1 bg-orange-900/30 rounded border border-orange-500/50 text-orange-400 text-xs font-bold tracking-wider">
+            VEGETATION DECLINING
           </span>
         </div>
 
@@ -295,8 +294,18 @@ export default function GreenCover() {
         {/* 2D/3D Toggle — top right */}
         <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 999 }}>
           <button
-            onClick={() => setIs3D(v => !v)}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-sm font-semibold hover:bg-white/20 transition-all shadow-lg"
+            onClick={() => setIs3D(!is3D)}
+            style={{
+              background: 'rgba(255,255,255,0.1)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              color: 'white',
+              borderRadius: '9999px',
+              padding: '8px 20px',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
           >
             {is3D ? '2D View' : '3D View'}
           </button>
